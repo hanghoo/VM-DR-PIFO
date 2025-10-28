@@ -1,0 +1,1945 @@
+{
+  "header_types" : [
+    {
+      "name" : "scalars_0",
+      "id" : 0,
+      "fields" : [
+        ["tmp", 32, false],
+        ["tmp_0", 48, false],
+        ["tmp_1", 32, false],
+        ["level_3_rank_0", 48, false],
+        ["in_pkt_ptr_0", 48, false],
+        ["in_force_deq_flow_id_0", 48, false],
+        ["new_rank_flow_id_0", 48, false],
+        ["flow_new_rank_0", 48, false],
+        ["update_flow_rank_0", 1, false],
+        ["in_flow_id_0", 48, false],
+        ["lowest_rank_value_0", 48, false],
+        ["_padding_0", 7, false]
+      ]
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "fields" : [
+        ["ingress_port", 9, false],
+        ["egress_spec", 9, false],
+        ["egress_port", 9, false],
+        ["instance_type", 32, false],
+        ["packet_length", 32, false],
+        ["enq_timestamp", 32, false],
+        ["enq_qdepth", 19, false],
+        ["deq_timedelta", 32, false],
+        ["deq_qdepth", 19, false],
+        ["ingress_global_timestamp", 48, false],
+        ["egress_global_timestamp", 48, false],
+        ["mcast_grp", 16, false],
+        ["egress_rid", 16, false],
+        ["checksum_error", 1, false],
+        ["parser_error", 32, false],
+        ["priority", 3, false],
+        ["_padding", 3, false]
+      ]
+    },
+    {
+      "name" : "ethernet_t",
+      "id" : 2,
+      "fields" : [
+        ["dstAddr", 48, false],
+        ["srcAddr", 48, false],
+        ["etherType", 16, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 3,
+      "fields" : [
+        ["version", 4, false],
+        ["ihl", 4, false],
+        ["diffserv", 6, false],
+        ["ecn", 2, false],
+        ["totalLen", 16, false],
+        ["identification", 16, false],
+        ["flags", 3, false],
+        ["fragOffset", 13, false],
+        ["ttl", 8, false],
+        ["protocol", 8, false],
+        ["hdrChecksum", 16, false],
+        ["srcAddr", 32, false],
+        ["dstAddr", 32, false],
+        ["options", 32, false]
+      ]
+    }
+  ],
+  "headers" : [
+    {
+      "name" : "scalars",
+      "id" : 0,
+      "header_type" : "scalars_0",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "standard_metadata",
+      "id" : 1,
+      "header_type" : "standard_metadata",
+      "metadata" : true,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ethernet",
+      "id" : 2,
+      "header_type" : "ethernet_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 3,
+      "header_type" : "ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    }
+  ],
+  "header_stacks" : [],
+  "header_union_types" : [],
+  "header_unions" : [],
+  "header_union_stacks" : [],
+  "field_lists" : [],
+  "errors" : [
+    ["NoError", 0],
+    ["PacketTooShort", 1],
+    ["NoMatch", 2],
+    ["StackOutOfBounds", 3],
+    ["HeaderTooShort", 4],
+    ["ParserTimeout", 5],
+    ["ParserInvalidArgument", 6]
+  ],
+  "enums" : [],
+  "parsers" : [
+    {
+      "name" : "parser",
+      "id" : 0,
+      "init_state" : "start",
+      "parse_states" : [
+        {
+          "name" : "start",
+          "id" : 0,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ethernet"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "etherType"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 1,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "ipv4"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        }
+      ]
+    }
+  ],
+  "parse_vsets" : [],
+  "deparsers" : [
+    {
+      "name" : "deparser",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 278,
+        "column" : 8,
+        "source_fragment" : "MyDeparser"
+      },
+      "order" : ["ethernet", "ipv4"],
+      "primitives" : []
+    }
+  ],
+  "meter_arrays" : [],
+  "counter_arrays" : [],
+  "register_arrays" : [
+    {
+      "name" : "MyIngress.register_last_ptr",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 152,
+        "column" : 25,
+        "source_fragment" : "register_last_ptr"
+      },
+      "size" : 1,
+      "bitwidth" : 48
+    },
+    {
+      "name" : "MyIngress.lowest_rank",
+      "id" : 1,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 153,
+        "column" : 25,
+        "source_fragment" : "lowest_rank"
+      },
+      "size" : 1,
+      "bitwidth" : 48
+    },
+    {
+      "name" : "MyIngress.lowest_rank_flow_id",
+      "id" : 2,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 154,
+        "column" : 25,
+        "source_fragment" : "lowest_rank_flow_id"
+      },
+      "size" : 1,
+      "bitwidth" : 48
+    },
+    {
+      "name" : "MyIngress.flows_min_rank",
+      "id" : 3,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 155,
+        "column" : 28,
+        "source_fragment" : "flows_min_rank"
+      },
+      "size" : 1024,
+      "bitwidth" : 48
+    }
+  ],
+  "calculations" : [
+    {
+      "name" : "calc",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 255,
+        "column" : 1,
+        "source_fragment" : "update_checksum( ..."
+      },
+      "algo" : "csum16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ecn"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        }
+      ]
+    }
+  ],
+  "learn_lists" : [],
+  "actions" : [
+    {
+      "name" : "NoAction",
+      "id" : 0,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 1,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 2,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 106,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 3,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 106,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 4,
+      "runtime_data" : [
+        {
+          "name" : "dstAddr",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 110,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 111,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 112,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 113,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.assign_flow_id",
+      "id" : 5,
+      "runtime_data" : [
+        {
+          "name" : "flow_id",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 160,
+            "column" : 8,
+            "source_fragment" : "in_flow_id = flow_id"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos137",
+      "id" : 6,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_force_deq_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 137,
+            "column" : 4,
+            "source_fragment" : "bit <48> in_force_deq_flow_id=0;"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "new_rank_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 138,
+            "column" : 4,
+            "source_fragment" : "bit <48> new_rank_flow_id=0;"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "flow_new_rank_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 139,
+            "column" : 4,
+            "source_fragment" : "bit <48> flow_new_rank=0;"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "update_flow_rank_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 149,
+            "column" : 4,
+            "source_fragment" : "bit <1> update_flow_rank = 0;"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 156,
+            "column" : 4,
+            "source_fragment" : "bit <48> in_flow_id = 0;"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos188",
+      "id" : 7,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "level_3_rank_0"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "options"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 188,
+            "column" : 8,
+            "source_fragment" : "level_3_rank = (bit<48>)(hdr.ipv4.options)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "new_rank_flow_id_0"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 189,
+            "column" : 8,
+            "source_fragment" : "new_rank_flow_id = in_flow_id"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "flow_new_rank_0"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "options"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 188,
+            "column" : 23,
+            "source_fragment" : "(bit<48>)(hdr.ipv4.options); ..."
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "update_flow_rank_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 191,
+            "column" : 8,
+            "source_fragment" : "update_flow_rank = 1"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "in_flow_id_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 192,
+            "column" : 29,
+            "source_fragment" : "(bit<32>)in_flow_id"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp_0"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "options"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 188,
+            "column" : 23,
+            "source_fragment" : "(bit<48>)(hdr.ipv4.options)"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.flows_min_rank"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 192,
+            "column" : 8,
+            "source_fragment" : "flows_min_rank.write((bit<32>)in_flow_id,level_3_rank)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos180",
+      "id" : 8,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_pkt_ptr_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.register_last_ptr"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 180,
+            "column" : 8,
+            "source_fragment" : "register_last_ptr.read(in_pkt_ptr,0)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_pkt_ptr_0"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["scalars", "in_pkt_ptr_0"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0x000000000001"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 181,
+            "column" : 8,
+            "source_fragment" : "in_pkt_ptr = in_pkt_ptr + (bit<48>)(1)"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.register_last_ptr"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_pkt_ptr_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 182,
+            "column" : 8,
+            "source_fragment" : "register_last_ptr.write(0,in_pkt_ptr)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp_1"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "in_flow_id_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 184,
+            "column" : 41,
+            "source_fragment" : "(bit<32>)in_flow_id"
+          }
+        },
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "level_3_rank_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.flows_min_rank"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp_1"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 184,
+            "column" : 8,
+            "source_fragment" : "flows_min_rank.read(level_3_rank,(bit<32>)in_flow_id)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos202",
+      "id" : 9,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "lowest_rank_value_0"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "level_3_rank_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 202,
+            "column" : 8,
+            "source_fragment" : "lowest_rank_value = level_3_rank"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.lowest_rank"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "level_3_rank_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 203,
+            "column" : 8,
+            "source_fragment" : "lowest_rank.write(0,lowest_rank_value)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_force_deq_flow_id_0"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 205,
+            "column" : 8,
+            "source_fragment" : "in_force_deq_flow_id = in_flow_id"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.lowest_rank_flow_id"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 206,
+            "column" : 8,
+            "source_fragment" : "lowest_rank_flow_id.write(0,in_flow_id)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos211",
+      "id" : 10,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_force_deq_flow_id_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.lowest_rank_flow_id"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 211,
+            "column" : 8,
+            "source_fragment" : "lowest_rank_flow_id.read(in_force_deq_flow_id,0)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos199",
+      "id" : 11,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "lowest_rank_value_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.lowest_rank"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 199,
+            "column" : 4,
+            "source_fragment" : "lowest_rank.read(lowest_rank_value,0)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos218",
+      "id" : 12,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "_DR_PIFO_scheduler_pass_updated_rank_values",
+          "parameters" : [
+            {
+              "type" : "extern",
+              "value" : "MyIngress.my_DR_PIFO"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "flow_new_rank_0"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "new_rank_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 218,
+            "column" : 8,
+            "source_fragment" : "my_DR_PIFO.pass_updated_rank_values(flow_new_rank,new_rank_flow_id,0)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos214",
+      "id" : 13,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "_DR_PIFO_scheduler_pass_rank_values",
+          "parameters" : [
+            {
+              "type" : "extern",
+              "value" : "MyIngress.my_DR_PIFO"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "level_3_rank_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 214,
+            "column" : 4,
+            "source_fragment" : "my_DR_PIFO.pass_rank_values(level_3_rank,0)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos230",
+      "id" : 14,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "_DR_PIFO_scheduler_my_scheduler",
+          "parameters" : [
+            {
+              "type" : "extern",
+              "value" : "MyIngress.my_DR_PIFO"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x000000000001"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000000f"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_pkt_ptr_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_pkt_ptr_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "in_force_deq_flow_id_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 230,
+            "column" : 12,
+            "source_fragment" : "my_DR_PIFO.my_scheduler(in_flow_id, number_of_levels_used, in_pred, in_pkt_ptr, in_shaping, in_enq, in_pkt_ptr, in_deq, in_use_updated_rank, in_force_deq, in_force_deq_flow_id, in_enable_error_correction, reset_time)"
+          }
+        }
+      ]
+    }
+  ],
+  "pipelines" : [
+    {
+      "name" : "ingress",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 102,
+        "column" : 8,
+        "source_fragment" : "MyIngress"
+      },
+      "init_table" : "tbl_qos137",
+      "tables" : [
+        {
+          "name" : "tbl_qos137",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 137,
+            "column" : 4,
+            "source_fragment" : "bit <48> in_force_deq_flow_id=0; ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [6],
+          "actions" : ["qos137"],
+          "base_default_next" : "MyIngress.lookup_flow_id",
+          "next_tables" : {
+            "qos137" : "MyIngress.lookup_flow_id"
+          },
+          "default_entry" : {
+            "action_id" : 6,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.lookup_flow_id",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 164,
+            "column" : 10,
+            "source_fragment" : "lookup_flow_id"
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "hdr.ipv4.srcAddr",
+              "target" : ["ipv4", "srcAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [5, 1],
+          "actions" : ["MyIngress.assign_flow_id", "NoAction"],
+          "base_default_next" : "tbl_qos180",
+          "next_tables" : {
+            "MyIngress.assign_flow_id" : "tbl_qos180",
+            "NoAction" : "tbl_qos180"
+          },
+          "default_entry" : {
+            "action_id" : 1,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_qos180",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 180,
+            "column" : 8,
+            "source_fragment" : "register_last_ptr.read(in_pkt_ptr,0); ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8],
+          "actions" : ["qos180"],
+          "base_default_next" : "node_5",
+          "next_tables" : {
+            "qos180" : "node_5"
+          },
+          "default_entry" : {
+            "action_id" : 8,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos188",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 188,
+            "column" : 21,
+            "source_fragment" : "= (bit<48>)(hdr.ipv4.options); ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [7],
+          "actions" : ["qos188"],
+          "base_default_next" : "tbl_qos199",
+          "next_tables" : {
+            "qos188" : "tbl_qos199"
+          },
+          "default_entry" : {
+            "action_id" : 7,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos199",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 199,
+            "column" : 4,
+            "source_fragment" : "lowest_rank.read(lowest_rank_value,0)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [11],
+          "actions" : ["qos199"],
+          "base_default_next" : "node_8",
+          "next_tables" : {
+            "qos199" : "node_8"
+          },
+          "default_entry" : {
+            "action_id" : 11,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos202",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 202,
+            "column" : 26,
+            "source_fragment" : "= level_3_rank; ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [9],
+          "actions" : ["qos202"],
+          "base_default_next" : "tbl_qos214",
+          "next_tables" : {
+            "qos202" : "tbl_qos214"
+          },
+          "default_entry" : {
+            "action_id" : 9,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos211",
+          "id" : 6,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 211,
+            "column" : 8,
+            "source_fragment" : "lowest_rank_flow_id.read(in_force_deq_flow_id,0)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [10],
+          "actions" : ["qos211"],
+          "base_default_next" : "tbl_qos214",
+          "next_tables" : {
+            "qos211" : "tbl_qos214"
+          },
+          "default_entry" : {
+            "action_id" : 10,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos214",
+          "id" : 7,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 214,
+            "column" : 4,
+            "source_fragment" : "my_DR_PIFO.pass_rank_values(level_3_rank,0)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [13],
+          "actions" : ["qos214"],
+          "base_default_next" : "node_13",
+          "next_tables" : {
+            "qos214" : "node_13"
+          },
+          "default_entry" : {
+            "action_id" : 13,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos218",
+          "id" : 8,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 218,
+            "column" : 8,
+            "source_fragment" : "my_DR_PIFO.pass_updated_rank_values(flow_new_rank,new_rank_flow_id,0)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [12],
+          "actions" : ["qos218"],
+          "base_default_next" : "node_15",
+          "next_tables" : {
+            "qos218" : "node_15"
+          },
+          "default_entry" : {
+            "action_id" : 12,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_drop",
+          "id" : 9,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 224,
+            "column" : 12,
+            "source_fragment" : "drop()"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [3],
+          "actions" : ["MyIngress.drop"],
+          "base_default_next" : "node_18",
+          "next_tables" : {
+            "MyIngress.drop" : "node_18"
+          },
+          "default_entry" : {
+            "action_id" : 3,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_qos230",
+          "id" : 10,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 230,
+            "column" : 12,
+            "source_fragment" : "my_DR_PIFO.my_scheduler(in_flow_id, number_of_levels_used, in_pred, in_pkt_ptr, in_shaping, in_enq, in_pkt_ptr, in_deq, in_use_updated_rank, in_force_deq, in_force_deq_flow_id, in_enable_error_correction, reset_time)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [14],
+          "actions" : ["qos230"],
+          "base_default_next" : "node_18",
+          "next_tables" : {
+            "qos230" : "node_18"
+          },
+          "default_entry" : {
+            "action_id" : 14,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_lpm",
+          "id" : 11,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 117,
+            "column" : 10,
+            "source_fragment" : "ipv4_lpm"
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "hdr.ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [4, 2, 0],
+          "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "MyIngress.ipv4_forward" : null,
+            "MyIngress.drop" : null,
+            "NoAction" : null
+          },
+          "default_entry" : {
+            "action_id" : 0,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        }
+      ],
+      "action_profiles" : [],
+      "conditionals" : [
+        {
+          "name" : "node_5",
+          "id" : 0,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 186,
+            "column" : 7,
+            "source_fragment" : "(level_3_rank == 0)||((bit<48>)(hdr.ipv4.options) < level_3_rank)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "or",
+              "left" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "==",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "level_3_rank_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x000000000000"
+                  }
+                }
+              },
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "<",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "&",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "options"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xffffffffffff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["scalars", "level_3_rank_0"]
+                  }
+                }
+              }
+            }
+          },
+          "true_next" : "tbl_qos188",
+          "false_next" : "tbl_qos199"
+        },
+        {
+          "name" : "node_8",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 200,
+            "column" : 7,
+            "source_fragment" : "(lowest_rank_value > level_3_rank) || (lowest_rank_value==0)"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "or",
+              "left" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : ">",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "lowest_rank_value_0"]
+                  },
+                  "right" : {
+                    "type" : "field",
+                    "value" : ["scalars", "level_3_rank_0"]
+                  }
+                }
+              },
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "==",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "lowest_rank_value_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x000000000000"
+                  }
+                }
+              }
+            }
+          },
+          "true_next" : "tbl_qos202",
+          "false_next" : "node_10"
+        },
+        {
+          "name" : "node_10",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 208,
+            "column" : 13,
+            "source_fragment" : "lowest_rank_value !=0"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "!=",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "lowest_rank_value_0"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x000000000000"
+              }
+            }
+          },
+          "true_next" : "tbl_qos211",
+          "false_next" : "tbl_qos214"
+        },
+        {
+          "name" : "node_13",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 216,
+            "column" : 7,
+            "source_fragment" : "update_flow_rank == 1"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "update_flow_rank_0"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x01"
+              }
+            }
+          },
+          "true_next" : "tbl_qos218",
+          "false_next" : "node_15"
+        },
+        {
+          "name" : "node_15",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 222,
+            "column" : 11,
+            "source_fragment" : "hdr.ipv4.dstAddr == 0"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["ipv4", "dstAddr"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x00000000"
+              }
+            }
+          },
+          "true_next" : "tbl_drop",
+          "false_next" : "tbl_qos230"
+        },
+        {
+          "name" : "node_18",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 233,
+            "column" : 12,
+            "source_fragment" : "hdr.ipv4.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["ipv4", "$valid$"]
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "MyIngress.ipv4_lpm"
+        }
+      ]
+    },
+    {
+      "name" : "egress",
+      "id" : 1,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 243,
+        "column" : 8,
+        "source_fragment" : "MyEgress"
+      },
+      "init_table" : null,
+      "tables" : [],
+      "action_profiles" : [],
+      "conditionals" : []
+    }
+  ],
+  "checksums" : [
+    {
+      "name" : "cksum",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 255,
+        "column" : 1,
+        "source_fragment" : "update_checksum( ..."
+      },
+      "target" : ["ipv4", "hdrChecksum"],
+      "type" : "generic",
+      "calculation" : "calc",
+      "verify" : false,
+      "update" : true,
+      "if_cond" : {
+        "type" : "expression",
+        "value" : {
+          "op" : "d2b",
+          "left" : null,
+          "right" : {
+            "type" : "field",
+            "value" : ["ipv4", "$valid$"]
+          }
+        }
+      }
+    }
+  ],
+  "force_arith" : [],
+  "extern_instances" : [
+    {
+      "name" : "MyIngress.my_DR_PIFO",
+      "id" : 0,
+      "type" : "DR_PIFO_scheduler",
+      "attribute_values" : [
+        {
+          "name" : "verbose",
+          "type" : "hexstr",
+          "value" : "0x1"
+        }
+      ]
+    }
+  ],
+  "field_aliases" : [
+    [
+      "queueing_metadata.enq_timestamp",
+      ["standard_metadata", "enq_timestamp"]
+    ],
+    [
+      "queueing_metadata.enq_qdepth",
+      ["standard_metadata", "enq_qdepth"]
+    ],
+    [
+      "queueing_metadata.deq_timedelta",
+      ["standard_metadata", "deq_timedelta"]
+    ],
+    [
+      "queueing_metadata.deq_qdepth",
+      ["standard_metadata", "deq_qdepth"]
+    ],
+    [
+      "intrinsic_metadata.ingress_global_timestamp",
+      ["standard_metadata", "ingress_global_timestamp"]
+    ],
+    [
+      "intrinsic_metadata.egress_global_timestamp",
+      ["standard_metadata", "egress_global_timestamp"]
+    ],
+    [
+      "intrinsic_metadata.mcast_grp",
+      ["standard_metadata", "mcast_grp"]
+    ],
+    [
+      "intrinsic_metadata.egress_rid",
+      ["standard_metadata", "egress_rid"]
+    ],
+    [
+      "intrinsic_metadata.priority",
+      ["standard_metadata", "priority"]
+    ]
+  ],
+  "program" : "qos.p4",
+  "__meta__" : {
+    "version" : [2, 23],
+    "compiler" : "https://github.com/p4lang/p4c"
+  }
+}
