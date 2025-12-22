@@ -27,7 +27,8 @@ std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {1}; // o
 //std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {8,2,1}; // 3 levels
 //std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {16,8,4,2,1}; // 5 levels
 
-std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+//std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {3};  // changed by hang for mini topology testing
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {4 ,hier_scheduler::number_of_queues_per_level[0]}; // 2 levels
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {10 ,hier_scheduler::number_of_queues_per_level[0]/hier_scheduler::number_of_queues_per_level[1] ,hier_scheduler::number_of_queues_per_level[1]}; // 3 levels
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {80 ,hier_scheduler::number_of_queues_per_level[0]/hier_scheduler::number_of_queues_per_level[1],hier_scheduler::number_of_queues_per_level[1]/hier_scheduler::number_of_queues_per_level[2],hier_scheduler::number_of_queues_per_level[2]/hier_scheduler::number_of_queues_per_level[3] ,hier_scheduler::number_of_queues_per_level[3]}; // 5 levels

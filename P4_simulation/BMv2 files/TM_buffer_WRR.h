@@ -19,7 +19,7 @@
 
 #include "simple_switch.h"
 #include "register_access.h"
-#include </home/vagrant/dr_pifo_simulation/utils/user_externs_WRR/WRR.h>
+#include </home/vagrant/P4_simulation/utils/user_externs_WRR/WRR.h>
 
 std::vector<std::shared_ptr<bm::hier_scheduler::flow_scheduler>> bm::hier_scheduler::FS = { NULL}; // one level
 //std::vector<std::shared_ptr<bm::hier_scheduler::flow_scheduler>> bm::hier_scheduler::FS = { NULL, NULL, NULL}; // 2 levels
@@ -141,7 +141,7 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 			prev_ptr_buffer->next = temp_ptr;
 		}
 	}
-////////////////////// then the pop operation 
+////////////////////// then the pop operation
 	std::shared_ptr<buffer> cur_ptr_buffer;
 	cur_ptr_buffer = std::make_shared<buffer>();
 	std::shared_ptr<buffer> prev_ptr_buffer;
@@ -164,11 +164,11 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 	{
 	  	if(ptr != 0)
 	  	{
-	  		pkt_ptr_queue.push(ptr);	  		
+	  		pkt_ptr_queue.push(ptr);
 	  	}
 	  	ptr = pkt_ptr_queue.front();
 
-				
+
 		if (buffer_head->ptr == ptr)
 		{
 			packet = std::move(buffer_head->packet);

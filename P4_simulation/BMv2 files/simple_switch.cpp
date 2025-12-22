@@ -39,13 +39,13 @@
 #include "register_access.h"
 #include "semaphore_TM.h"
 
-#include "TM_buffer_dr_pifo.h"
+//#include "TM_buffer_dr_pifo.h"
 //#include "TM_buffer_pFabric.h"
 //#include "TM_buffer_pifo.h"
 //#include "TM_buffer_pieo.h"
 //#include "TM_buffer_dr_pifo_hier.h"
 //#include "TM_buffer_DRR.h"
-//#include "TM_buffer_WRR.h"
+#include "TM_buffer_WRR.h"
 //#include "TM_buffer_WDRR.h"
 //#include "TM_buffer_RL_SP_NWC.h"
 
@@ -660,7 +660,7 @@ bool dequeued_pkt = false; //elbediwy added this
 if(TM_buffer_obj.num_of_read_pkts() < TM_buffer_obj.enqueued_packets())  // added line //Elbediwy : check if we didn't read all packets that enqueued in the ingress thread until now.
 {
 //    BMLOG_DEBUG("Elbediwy test : num_of_read_pkts = {}. TM_buffer_obj.enqueued_packets() = {}", TM_buffer_obj.num_of_read_pkts(), TM_buffer_obj.enqueued_packets())
-#ifdef SSWITCH_PRIORITY_QUEUEING_ON // Elbediwy : I left these variables for the priority queues, but they are not used, Note : the egress_buffer is not ours, 
+#ifdef SSWITCH_PRIORITY_QUEUEING_ON // Elbediwy : I left these variables for the priority queues, but they are not used, Note : the egress_buffer is not ours,
 // and we read only from it and store the packets in our buffer
     size_t priority;
     egress_buffers.pop_back(worker_id, &port, &priority, &packet);
@@ -671,7 +671,7 @@ if(TM_buffer_obj.num_of_read_pkts() < TM_buffer_obj.enqueued_packets())  // adde
 
 while(TM_semaphore_obj.is_TM_available(1,0) == false) // elbediwy added this
 {
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));  // elbediwy added this 
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));  // elbediwy added this
 }
 
 dequeued_pkt = false; // elbediwy added this
@@ -799,7 +799,7 @@ if(TM_buffer_obj.valid_pop(packet) == 1) // added line
 }
   if(dequeued_pkt == false)
   {
-    TM_semaphore_obj.release_TM_key(); // elbediwy added this  
+    TM_semaphore_obj.release_TM_key(); // elbediwy added this
   }
 
   }

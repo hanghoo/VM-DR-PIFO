@@ -27,7 +27,8 @@ std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {1}; // o
 //std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {8,2,1}; // 3 levels
 //std::vector<unsigned int> hier_scheduler::number_of_queues_per_level = {16,8,4,2,1}; // 5 levels
 
-std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+//std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {3}; // one level (minimal topology: 3 flows)
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {50 ,hier_scheduler::number_of_queues_per_level[0]}; // 2 levels
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {10 ,hier_scheduler::number_of_queues_per_level[0]/hier_scheduler::number_of_queues_per_level[1] ,hier_scheduler::number_of_queues_per_level[1]}; // 3 levels
 //std::vector<unsigned int> hier_scheduler::number_of_pkts_per_queue_each_level = {80 ,hier_scheduler::number_of_queues_per_level[0]/hier_scheduler::number_of_queues_per_level[1],hier_scheduler::number_of_queues_per_level[1]/hier_scheduler::number_of_queues_per_level[2],hier_scheduler::number_of_queues_per_level[2]/hier_scheduler::number_of_queues_per_level[3] ,hier_scheduler::number_of_queues_per_level[3]}; // 5 levels
@@ -69,10 +70,15 @@ unsigned int hier_scheduler::switch_is_ready = 1;
 int hier_scheduler::start_time = 0;
 int hier_scheduler::last_time = 0;
 
-std::vector<unsigned int> hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
-std::vector<unsigned int> hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
+//std::vector<unsigned int> hier_scheduler::quantums = {20000,2000,1000}; // minimal topology: 3 flows
+//std::mutex hier_scheduler::quota_mutex;  // add by hang
 BM_REGISTER_EXTERN(hier_scheduler)
 BM_REGISTER_EXTERN_METHOD(hier_scheduler, my_scheduler, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&);
+
+//BM_REGISTER_EXTERN_METHOD(hier_scheduler, set_quantum, const Data&, const Data&, const Data&);  // add by hang
 
 BM_REGISTER_EXTERN_METHOD(hier_scheduler, pass_rank_values, const Data&, const Data&);
 

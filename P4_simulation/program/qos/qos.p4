@@ -2,12 +2,18 @@
 #include <core.p4>
 #include <v1model.p4>
 
-extern DR_PIFO_scheduler<T1,T2> {
-    DR_PIFO_scheduler(bit<1> verbose); 
-void my_scheduler(in T1 in_flow_id, in T1 number_of_levels_used, in T1 in_pred, in T1 in_arrival_time, in T2 in_shaping, in T2 in_enq, in T1 in_pkt_ptr, in T2 in_deq, in T2 in_use_updated_rank, in T2 in_force_deq, in T1 in_force_deq_flow_id, in T2 in_enable_error_correction, in T2 reset_time);
+extern hier_scheduler<T1,T2> {
+    hier_scheduler(bit<1> verbose);
+void my_scheduler(in T1 in_flow_id, in T1 number_of_levels_used, in T1 in_pred, in T1 in_arrival_time, in T2 in_shaping, in T2 in_enq, in T1 in_pkt_ptr, in T2 in_deq, in T2 reset_time);
 void pass_rank_values ( in T1 rank_value, in T1 level_id);
 void pass_updated_rank_values ( in T1 rank_value, in T1 flow_id, in T1 level_id);
 }
+
+extern floor_extern<T1> {
+   	floor_extern(bit<1> verbose2);
+void floor ( in T1 nom, in T1 dom, inout T1 result);
+}
+
 
 const bit<16> TYPE_IPV4 = 0x800;
 
@@ -128,33 +134,28 @@ control MyIngress(inout headers hdr,
     }
 
 
-    @userextern @name("my_DR_PIFO")
-    DR_PIFO_scheduler<bit<48>,bit<1>>(1) my_DR_PIFO;
+    @userextern @name("my_hier")
+    hier_scheduler<bit<48>,bit<1>>(1) my_hier;
 
-    bit <48> level_3_rank;
-    bit <48> in_pred= 15;
+    @userextern @name("floor_extern_obj")
+    floor_extern<bit<48>>(1) floor_extern_obj;
+
+    bit <48> level_0_rank;
+    bit <48> in_pred= 200000;
     bit <48> in_pkt_ptr;
-    bit <48> in_force_deq_flow_id=0;
-    bit <48> new_rank_flow_id=0;
-    bit <48> flow_new_rank=0;
     bit <48> out_pkt_ptr=0;
     bit <48> number_of_levels_used = 1;
 
     bit <1> in_shaping = 1;
     bit <1> in_enq = 1;
     bit <1> in_deq = 0;
-    bit <1> in_use_updated_rank = 1;
-    bit <1> in_force_deq = 0;
-    bit <1> in_enable_error_correction = 1;
-    bit <1> update_flow_rank = 0;
     bit <1> reset_time = 0;
 
     register<bit<48>>(1) register_last_ptr;
-    register<bit<48>>(1) lowest_rank;
-    register<bit<48>>(1) lowest_rank_flow_id;
-    register<bit<48>>(1024) flows_min_rank;
-    bit <48> in_flow_id = 0;
 
+    register<bit<48>>(1) delete_this;
+
+    bit <48> in_flow_id = 0;
 
     action assign_flow_id(bit <48> flow_id) {
         in_flow_id = flow_id;
@@ -177,62 +178,32 @@ control MyIngress(inout headers hdr,
 
         lookup_flow_id.apply();
 
+        if((hdr.ipv4.dstAddr == 0)||(in_flow_id == 0))
+        {
+            drop();
+        }
+        else
+        {
+
         register_last_ptr.read(in_pkt_ptr,0);
         in_pkt_ptr = in_pkt_ptr + (bit<48>)(1);
         register_last_ptr.write(0,in_pkt_ptr);
 
-        flows_min_rank.read(level_3_rank,(bit<32>)in_flow_id);
-
-    if((level_3_rank == 0)||((bit<48>)(hdr.ipv4.options) < level_3_rank))
-    {
-        level_3_rank = (bit<48>)(hdr.ipv4.options);
-        new_rank_flow_id = in_flow_id;
-        flow_new_rank = level_3_rank;
-        update_flow_rank = 1;
-        flows_min_rank.write((bit<32>)in_flow_id,level_3_rank);
-    }
-    
-
         reset_time = 0;
 
-    bit<48> lowest_rank_value;
-    lowest_rank.read(lowest_rank_value,0);
-    if((lowest_rank_value > level_3_rank) || (lowest_rank_value==0))
-    {
-        lowest_rank_value = level_3_rank;
-        lowest_rank.write(0,lowest_rank_value);
-        in_force_deq = 1;
-        in_force_deq_flow_id = in_flow_id;
-        lowest_rank_flow_id.write(0,in_flow_id);
-    }
-    else if (lowest_rank_value !=0)
-    {
-        in_force_deq = 1;
-        lowest_rank_flow_id.read(in_force_deq_flow_id,0);
-    }
+	level_0_rank = (bit<48>)(hdr.ipv4.options);
 
-    my_DR_PIFO.pass_rank_values(level_3_rank,0);
-    
-    if(update_flow_rank == 1)
-    {
-        my_DR_PIFO.pass_updated_rank_values(flow_new_rank,new_rank_flow_id,0);
-    }
+   	my_hier.pass_rank_values(level_0_rank,0);
+	//my_hier.pass_rank_values(level_2_rank,2);
 
+    in_flow_id = in_flow_id - 1;
 
-        if(hdr.ipv4.dstAddr == 0)
-        {
-            drop();        
+            my_hier.my_scheduler(in_flow_id, number_of_levels_used, in_pred, in_pkt_ptr, in_shaping, in_enq, in_pkt_ptr, in_deq, reset_time);
         }
-        else
-        {
-        in_force_deq = 0; //not needed in this experiment, it is left to the P4 programmer to decide if he wants to use this feature or not.
-        
-            my_DR_PIFO.my_scheduler(in_flow_id, number_of_levels_used, in_pred, in_pkt_ptr, in_shaping, in_enq, in_pkt_ptr, in_deq, in_use_updated_rank, in_force_deq, in_force_deq_flow_id, in_enable_error_correction, reset_time);
-        }
-        
-        if (hdr.ipv4.isValid()) {   
+
+        if (hdr.ipv4.isValid()) {
            ipv4_lpm.apply();
-        }  
+        }
     }
 }
 

@@ -12,7 +12,8 @@ unsigned int pFabric_scheduler::time_now = 0;
 unsigned int pFabric_scheduler::number_levels = 1;
 
 std::vector<unsigned int> pFabric_scheduler::number_of_queues_per_level = {1};
-std::vector<unsigned int> pFabric_scheduler::number_of_pkts_per_queue_each_level = {80};
+//std::vector<unsigned int> pFabric_scheduler::number_of_pkts_per_queue_each_level = {80};
+std::vector<unsigned int> pFabric_scheduler::number_of_pkts_per_queue_each_level = {3}; // minimal topology: 3 flows
 
 unsigned int sum_all_queues = pFabric_scheduler::number_of_queues_per_level[0];
 

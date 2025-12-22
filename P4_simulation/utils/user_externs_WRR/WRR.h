@@ -70,7 +70,7 @@ void init() override {  // Attributes
 	static std::vector<unsigned int> error_detected_each_level;
 	static std::vector<unsigned int> internal_force_flow_id_each_level;
 
-	static std::vector<std::shared_ptr<flow_scheduler>> FS; 
+	static std::vector<std::shared_ptr<flow_scheduler>> FS;
 
 	static std::vector<std::shared_ptr<fifo_bank>> FB; // the fifo bank queues, each flow scheduler has its own FIFO bank which stores the rest of packets of the flow handled in this flow scheduler.
 
@@ -78,7 +78,7 @@ void init() override {  // Attributes
 // level 2 of the hierarchy variables
 
 // level 1 of the hierarchy variables (root)
-	 
+
 
 	std::shared_ptr<packet> deq_packet_ptr = NULL; // the pointer to the dequeued packet
 	static unsigned int number_of_enqueue_packets; // the total number of enqueued packets until now.
@@ -87,11 +87,11 @@ void init() override {  // Attributes
 
 	static unsigned int number_of_dequeue_packets; // the total number of dequeued packets until now.
 
-	static unsigned int switch_is_ready; 
+	static unsigned int switch_is_ready;
 
 	static unsigned int number_levels;
 
-// these variables will contain the inputs that will be inserted by the user, to be used later. 
+// these variables will contain the inputs that will be inserted by the user, to be used later.
 	unsigned int flow_id;
 	//std::vector<unsigned int> pkt_levels_ranks = std::vector<unsigned int>(number_levels);
 	static std::vector<unsigned int> pkt_levels_ranks;
@@ -111,8 +111,8 @@ void init() override {  // Attributes
 	static unsigned int enable_error_correction;   //new static
 	static std::queue<unsigned int> pkt_ptr_queue;
 
-	static int start_time; 
-	static int last_time; 
+	static int start_time;
+	static int last_time;
 
 	static	std::vector<unsigned int> quota_each_queue;
 
@@ -130,11 +130,11 @@ void init() override {  // Attributes
 	}
 
 
-	void my_scheduler(const Data& in_flow_id, const Data& number_of_levels_used, const Data& in_pred, const Data& in_arrival_time, const Data& in_shaping, const Data& in_enq, const Data& in_pkt_ptr, const Data& in_deq, const Data& reset_time)	
+	void my_scheduler(const Data& in_flow_id, const Data& number_of_levels_used, const Data& in_pred, const Data& in_arrival_time, const Data& in_shaping, const Data& in_enq, const Data& in_pkt_ptr, const Data& in_deq, const Data& reset_time)
 	{
 
 // copy the inputs values :: Todo : they should be removed later and just use the inputs directly.
-	
+
 	if(reset_time.get<uint32_t>() == 1)
 	{
 		time_now = 0;
@@ -189,12 +189,12 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 
 		}
 		if (level_enq == 1)
-		{	
+		{
 			if(level_id < (number_levels - 1))
 			{
 				queue_id = int(level_packet_ptr->flow_id / number_of_pkts_per_queue_each_level[level_id]);
 			}
-		
+
 			if(level_id == 0)
 			{
 				head_FB = FB[queue_id];
@@ -214,14 +214,14 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			internal_force_flow_id_each_level[queue_id + sum_number_all_queues] = internal_force_flow_id;
 			if(level_id == 0)
 			{
-				FB[queue_id] = head_FB;	
+				FB[queue_id] = head_FB;
 			}
 		}
 	}
 
 
-// the core function of the hier scheduler, applies enqueue and dequeue operations, to & from each level of the hirarchy, 
-//and each level is responsible of enqueue and dequeue in each queue inside this level 
+// the core function of the hier scheduler, applies enqueue and dequeue operations, to & from each level of the hirarchy,
+//and each level is responsible of enqueue and dequeue in each queue inside this level
 	void run_core()
 	{
 		deq_packet_ptr = NULL;
@@ -235,7 +235,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 				//{
 				//	quota_each_queue.erase(quota_each_queue.begin() + i);
 				//	quota_each_queue.insert(quota_each_queue.begin() + i, quota);
-				//}	
+				//}
 			}
 
 			number_of_enqueue_packets = number_of_enqueue_packets + 1;
@@ -280,7 +280,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 1")
 		//if(time_now >= 200000)
 		{
-			for (int i = 0; i<72 ;i++)
+			//for (int i = 0; i<72 ;i++)
+      for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
 			{
 				head_FS = FB[0];
 				while((head_FS != NULL))
@@ -307,7 +308,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			if(dequeued_done_right == false)
 			{
 //				BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 2")
-				for (int i = 0; i<72 ;i++)
+				//for (int i = 0; i<72 ;i++)
+        for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
 				{
 					unsigned int current_quota = quota_each_queue[i];
 					if(current_quota < quantums[i])
@@ -316,7 +318,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
 					}
 
-					head_FS = FB[0];			
+					head_FS = FB[0];
 					while((head_FS != NULL) &&(dequeued_done_right == false))
 					{
 						if(head_FS->left != NULL)
@@ -328,11 +330,11 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 									dequeued_done_right = true;
 									dequeue_right_id = head_FS->left->object->flow_id;
 								}
-							}		
+							}
 						}
 						head_FS = head_FS->bottom;
 					}
-				}	
+				}
 			}
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 5")
 			if((dequeued_done_right == true))
@@ -346,7 +348,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			if (deq_packet_ptr != NULL)
 			{
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 7, deq_packet_ptr = {}", deq_packet_ptr)
-				new_quota = quota_each_queue[dequeue_id] - deq_packet_ptr->levels_ranks[0];  
+				new_quota = quota_each_queue[dequeue_id] - deq_packet_ptr->levels_ranks[0];
 				quota_each_queue.erase(quota_each_queue.begin() + dequeue_id);
 				quota_each_queue.insert(quota_each_queue.begin() + dequeue_id, new_quota);
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation dequeue_id = {}, new_quota = {}, quota_each_queue[dequeue_id] = {}", dequeue_id, new_quota, quota_each_queue[dequeue_id])
@@ -355,7 +357,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			{
 BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 
-				for (int i = 71; i>=0 ;i--)
+				//for (int i = 71; i>=0 ;i--)
+        for (int i = 2; i>=0 ;i--)  // by hang. minimal topology: 3 flows (0-2)
 				{
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation i = {}, current_quota = {}, quantums[i] = {}", i, current_quota, quantums[i])
 						quota_each_queue.erase(quota_each_queue.begin() + i);
@@ -380,9 +383,9 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 		if (in_enq == 1)
 		{
 			std::shared_ptr<hier_scheduler::packet> enq_packet_ptr;
-			enq_packet_ptr = std::shared_ptr<hier_scheduler::packet>(std::make_shared<hier_scheduler::packet>(*pkt_ptr));		
+			enq_packet_ptr = std::shared_ptr<hier_scheduler::packet>(std::make_shared<hier_scheduler::packet>(*pkt_ptr));
 			enqueue_FB(enq_packet_ptr, in_head_FB);
-			
+
 		}
 	}
 
@@ -450,7 +453,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 		{
 			if ((cur_ptr_FB->flow_id == flow_id) && (cur_ptr_FB->left != NULL))
 			{
-				if(cur_ptr_FB->left->object != NULL) 
+				if(cur_ptr_FB->left->object != NULL)
 				{
 					if(cur_ptr_FB->left->object->pred <= in_time)
 					{
@@ -475,7 +478,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 			unsigned int current_pkt_ptr = pkt_ptr_queue.front();
 			pkt_ptr_queue.pop();
 			number_of_read_packets = number_of_read_packets + 1;
-			return current_pkt_ptr;			
+			return current_pkt_ptr;
 		}
 		else
 		{
@@ -500,7 +503,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 	run_core();
 
 	if(deq_packet_ptr != NULL)
-	{		
+	{
 		switch_is_ready = 0;
 
 		if(last_force_deq !=0)
@@ -510,7 +513,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 		//if(pkt_ptr !=0)
 		//pkt_ptr = 0;
 		return deq_packet_ptr->pkt_ptr;
-	}	
+	}
 	else
 	{
 	return null_ptr;
