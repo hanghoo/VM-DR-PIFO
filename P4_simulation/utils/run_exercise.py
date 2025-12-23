@@ -269,8 +269,8 @@ class ExerciseRunner:
         grpc_port = sw_obj.grpc_port
         device_id = sw_obj.device_id
         print("DEBUG: About to load", sw_dict["runtime_json"])  # add by hang
-        runtime_json=os.path.join("/home/vagrant/P4_simulation/program/qos", sw_dict["runtime_json"])  # adjust the path by hang
-        #runtime_json = sw_dict['runtime_json']
+        # runtime_json is expected to be relative to the current workdir
+        runtime_json = os.path.join(os.getcwd(), sw_dict["runtime_json"])
         self.logger('Configuring switch %s using P4Runtime with file %s' % (sw_name, runtime_json))
         with open(runtime_json, 'r') as sw_conf_file:
             outfile = '%s/%s-p4runtime-requests.txt' %(self.log_dir, sw_name)
@@ -282,6 +282,64 @@ class ExerciseRunner:
                 sw_conf_file=sw_conf_file,
                 workdir=os.getcwd(),
                 proto_dump_fpath=outfile)
+
+    def program_switch_cli_from_runtime_json(self, sw_name, sw_dict):
+        """Program the switch using simple_switch_CLI from a runtime_json file.
+
+        This is used for non-gRPC targets (simple_switch) where P4Runtime is not
+        available. Only supports the subset of table entries used by this repo.
+        """
+        sw_obj = self.net.get(sw_name)
+        thrift_port = sw_obj.thrift_port
+
+        runtime_json = os.path.join(os.getcwd(), sw_dict["runtime_json"])
+        self.logger('Configuring switch %s using simple_switch_CLI from runtime file %s' % (sw_name, runtime_json))
+
+        with open(runtime_json, 'r') as f:
+            conf = json.load(f)
+
+        # Generate a temporary CLI commands file in the log directory
+        cli_input_commands = '%s/%s-cli-from-runtime.txt' % (self.log_dir, sw_name)
+
+        def _fmt_lpm(ip, prefix_len):
+            return "%s/%d" % (ip, int(prefix_len))
+
+        with open(cli_input_commands, 'w') as fout:
+            for entry in conf.get('table_entries', []):
+                table = entry.get('table')
+                match = entry.get('match', {})
+                action_name = entry.get('action_name')
+                action_params = entry.get('action_params', {})
+
+                # ipv4_lpm: hdr.ipv4.dstAddr LPM
+                if table == "MyIngress.ipv4_lpm":
+                    ip, plen = match.get("hdr.ipv4.dstAddr")
+                    dstAddr = action_params.get("dstAddr")
+                    port = action_params.get("port")
+                    cmd = "table_add %s %s %s => %s %s" % (
+                        table, action_name, _fmt_lpm(ip, plen), dstAddr, port)
+                    fout.write(cmd + "\n")
+                    continue
+
+                # lookup_flow_id: hdr.ipv4.srcAddr LPM
+                if table == "MyIngress.lookup_flow_id":
+                    ip, plen = match.get("hdr.ipv4.srcAddr")
+                    flow_id = action_params.get("flow_id")
+                    cmd = "table_add %s %s %s => %s" % (
+                        table, action_name, _fmt_lpm(ip, plen), flow_id)
+                    fout.write(cmd + "\n")
+                    continue
+
+                # Fallback: ignore unsupported entries
+                self.logger("WARNING: Unsupported table entry for CLI programming: %s" % table)
+
+        # Run CLI
+        cli = 'simple_switch_CLI'
+        cli_outfile = '%s/%s_cli_output.log'%(self.log_dir, sw_name)
+        with open(cli_input_commands, 'r') as fin:
+            with open(cli_outfile, 'w') as cli_fout:
+                subprocess.Popen([cli, '--thrift-port', str(thrift_port)],
+                                 stdin=fin, stdout=cli_fout)
 
     def program_switch_cli(self, sw_name, sw_dict):
         """ This method will start up the CLI and use the contents of the
@@ -306,10 +364,15 @@ class ExerciseRunner:
             provided for the switches.
         """
         for sw_name, sw_dict in self.switches.items():
+            sw_obj = self.net.get(sw_name)
             if 'cli_input' in sw_dict:
                 self.program_switch_cli(sw_name, sw_dict)
             if 'runtime_json' in sw_dict:
-                self.program_switch_p4runtime(sw_name, sw_dict)
+                # Only use P4Runtime when running a gRPC-capable switch target
+                if hasattr(sw_obj, "grpc_port") and ('grpc' in self.bmv2_exe):
+                    self.program_switch_p4runtime(sw_name, sw_dict)
+                else:
+                    self.program_switch_cli_from_runtime_json(sw_name, sw_dict)
 
     def program_hosts(self):
         """ Execute any commands provided in the topology.json file on each Mininet host
