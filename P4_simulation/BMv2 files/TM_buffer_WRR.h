@@ -44,7 +44,8 @@ std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {1}; 
 //std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {8,2,1}; // 3 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {16,8,4,2,1}; // 5 levels
 
-std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+//std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
+std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {3}; // one level (minimal topology: 3 flows)
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {4 ,bm::hier_scheduler::number_of_queues_per_level[0]}; // 2 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {10 ,bm::hier_scheduler::number_of_queues_per_level[0]/bm::hier_scheduler::number_of_queues_per_level[1] ,bm::hier_scheduler::number_of_queues_per_level[1]}; // 3 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {80 ,bm::hier_scheduler::number_of_queues_per_level[0]/bm::hier_scheduler::number_of_queues_per_level[1],bm::hier_scheduler::number_of_queues_per_level[1]/bm::hier_scheduler::number_of_queues_per_level[2],bm::hier_scheduler::number_of_queues_per_level[2]/bm::hier_scheduler::number_of_queues_per_level[3] ,bm::hier_scheduler::number_of_queues_per_level[3]}; // 5 levels
@@ -86,8 +87,12 @@ unsigned int bm::hier_scheduler::switch_is_ready = 1;
 int bm::hier_scheduler::start_time = 0;
 int bm::hier_scheduler::last_time = 0;
 
-std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
-std::vector<unsigned int> bm::hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> bm::hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+//std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//std::vector<unsigned int> bm::hier_scheduler::quantums = {200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200};
+std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
+std::vector<unsigned int> bm::hier_scheduler::quantums = {500,500,1000}; // minimal topology: 3 flows
 bool dequeued_pointers[50000] = {0};
 std::queue<unsigned int> pkt_ptr_queue;
 

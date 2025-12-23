@@ -37,7 +37,13 @@ class hier_scheduler : public bm::ExternType {
 void init() override {  // Attributes
   static constexpr std::uint32_t QUIET = 0u;
   // Init variables
-  verbose_ = verbose.get<std::uint32_t>() != QUIET;};
+  verbose_ = verbose.get<std::uint32_t>() != QUIET;
+  // ========== DEBUG: Verify module loaded ==========
+  bm::Logger::get()->info("========================================");
+  bm::Logger::get()->info("WRR Module INITIALIZED successfully!");
+  bm::Logger::get()->info("========================================");
+  // =================================================
+};
 
 // the packet struct that presents any packet inside the scheduler.
 	struct packet {
@@ -132,6 +138,13 @@ void init() override {  // Attributes
 
 	void my_scheduler(const Data& in_flow_id, const Data& number_of_levels_used, const Data& in_pred, const Data& in_arrival_time, const Data& in_shaping, const Data& in_enq, const Data& in_pkt_ptr, const Data& in_deq, const Data& reset_time)
 	{
+		// ========== DEBUG: Function called ==========
+		bm::Logger::get()->info(">>> my_scheduler CALLED: flow_id={}, enq={}, deq={}, pkt_ptr={}", 
+		            in_flow_id.get<uint32_t>(), 
+		            in_enq.get<uint32_t>(), 
+		            in_deq.get<uint32_t>(),
+		            in_pkt_ptr.get<uint32_t>());
+		// ============================================
 
 // copy the inputs values :: Todo : they should be removed later and just use the inputs directly.
 
@@ -224,6 +237,11 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 //and each level is responsible of enqueue and dequeue in each queue inside this level
 	void run_core()
 	{
+		// ========== DEBUG: run_core called ==========
+		bm::Logger::get()->info(">>> run_core CALLED: enq={}, deq={}, switch_is_ready={}", 
+		            enq, deq, switch_is_ready);
+		// ============================================
+		
 		deq_packet_ptr = NULL;
 		if (enq == 1)
 		{
@@ -249,12 +267,24 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			enq_packet_ptr->levels_ranks = pkt_levels_ranks;
 			enq_packet_ptr->arrival_time = arrival_time;
 
+			// ========== DEBUG LOG: Enqueue ==========
+			bm::Logger::get()->info("========================================");
+			bm::Logger::get()->info("WRR Enqueue Operation");
+			bm::Logger::get()->info("flow_id: {}, rank: {}, pred: {}, pkt_ptr: {}", 
+			            flow_id, pkt_levels_ranks[0], pred, pkt_ptr);
+			// ========================================
+
 			level_controller(enq_packet_ptr, enq, 0);
 
 		}
 
 		if ((deq == 1)&&(switch_is_ready == 1))
 		{
+			// ========== DEBUG LOG: WRR Dequeue Start ==========
+			bm::Logger::get()->info("========================================");
+			bm::Logger::get()->info("WRR Dequeue Operation Started");
+			bm::Logger::get()->info("Condition check: deq={}, switch_is_ready={}", deq, switch_is_ready);
+			// ===================================================
 
 			//last_time = std::time(0);
 			last_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -277,7 +307,13 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			unsigned int dequeue_id = 0;
 			unsigned int new_quota;
 			std::shared_ptr<fifo_bank> head_FS = NULL;
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 1")
+
+			bm::Logger::get()->info("time_now: {}", time_now);
+			bm::Logger::get()->info("Initial quota_each_queue: [{}, {}, {}]", 
+			            quota_each_queue[0], quota_each_queue[1], quota_each_queue[2]);
+			bm::Logger::get()->info("quantums: [{}, {}, {}]", 
+			            quantums[0], quantums[1], quantums[2]);
+
 		//if(time_now >= 200000)
 		{
 			//for (int i = 0; i<72 ;i++)
@@ -290,10 +326,19 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 					{
 						if(head_FS->left->object->flow_id == i)
 						{
-							if((quota_each_queue[i] >= head_FS->left->object->levels_ranks[0]))
+							unsigned int packet_rank = head_FS->left->object->levels_ranks[0];
+							bool quota_check = quota_each_queue[i] >= packet_rank;
+							
+							// ========== DEBUG LOG: First Round Check ==========
+							bm::Logger::get()->info("First Round - Flow {}: quota={}, rank={}, check={}", 
+							            i, quota_each_queue[i], packet_rank, quota_check);
+							// ==================================================
+							
+							if(quota_check)
 							{
 								dequeued_done_right = true;
 								dequeue_right_id = head_FS->left->object->flow_id;
+								bm::Logger::get()->info("First Round - Flow {} SELECTED for dequeue!", i);
 								break;
 							}
 						}
@@ -307,15 +352,23 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			}
 			if(dequeued_done_right == false)
 			{
-//				BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 2")
+				bm::Logger::get()->info("First Round: No packet selected, entering Second Round");
 				//for (int i = 0; i<72 ;i++)
         for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
 				{
 					unsigned int current_quota = quota_each_queue[i];
+					bool quota_reset = false;
+					
 					if(current_quota < quantums[i])
 					{
 						quota_each_queue.erase(quota_each_queue.begin() + i);
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
+						quota_reset = true;
+						
+						// ========== DEBUG LOG: Quota Reset ==========
+						bm::Logger::get()->info("Second Round - Flow {}: quota reset from {} to {}", 
+						            i, current_quota, quantums[i]);
+						// ============================================
 					}
 
 					head_FS = FB[0];
@@ -325,10 +378,19 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 						{
 							if(head_FS->left->object->flow_id == i)
 							{
-								if(quota_each_queue[i] >= head_FS->left->object->levels_ranks[0])
+								unsigned int packet_rank = head_FS->left->object->levels_ranks[0];
+								bool quota_check = quota_each_queue[i] >= packet_rank;
+								
+								// ========== DEBUG LOG: Second Round Check ==========
+								bm::Logger::get()->info("Second Round - Flow {}: quota={}, rank={}, check={}", 
+								            i, quota_each_queue[i], packet_rank, quota_check);
+								// =================================================
+								
+								if(quota_check)
 								{
 									dequeued_done_right = true;
 									dequeue_right_id = head_FS->left->object->flow_id;
+									bm::Logger::get()->info("Second Round - Flow {} SELECTED for dequeue!", i);
 								}
 							}
 						}
@@ -336,26 +398,50 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 					}
 				}
 			}
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 5")
 			if((dequeued_done_right == true))
 			{
-//				BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 5, dequeue_right_id = {}", dequeue_right_id)
+				bm::Logger::get()->info("Calling dequeue_FB: flow_id={}, time_now={}", dequeue_right_id, time_now);
 				dequeue_id = dequeue_right_id;
 				dequeue_FB(deq_packet_ptr, dequeue_id, FB[0], time_now);
+				
+				// ========== DEBUG LOG: dequeue_FB Result ==========
+				if(deq_packet_ptr != NULL)
+				{
+					bm::Logger::get()->info("dequeue_FB SUCCESS: flow_id={}, rank={}, pred={}, pkt_ptr={}", 
+					            deq_packet_ptr->flow_id,
+					            deq_packet_ptr->levels_ranks[0],
+					            deq_packet_ptr->pred,
+					            deq_packet_ptr->pkt_ptr);
+				}
+				else
+				{
+					bm::Logger::get()->info("dequeue_FB FAILED: returned NULL (pred check failed?)");
+				}
+				// ==================================================
 			}
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 6")
+			else
+			{
+				bm::Logger::get()->info("No packet selected for dequeue (dequeued_done_right=false)");
+			}
 
 			if (deq_packet_ptr != NULL)
 			{
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 7, deq_packet_ptr = {}", deq_packet_ptr)
+				unsigned int old_quota = quota_each_queue[dequeue_id];
 				new_quota = quota_each_queue[dequeue_id] - deq_packet_ptr->levels_ranks[0];
 				quota_each_queue.erase(quota_each_queue.begin() + dequeue_id);
 				quota_each_queue.insert(quota_each_queue.begin() + dequeue_id, new_quota);
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation dequeue_id = {}, new_quota = {}, quota_each_queue[dequeue_id] = {}", dequeue_id, new_quota, quota_each_queue[dequeue_id])
+				
+				// ========== DEBUG LOG: Quota Update ==========
+				bm::Logger::get()->info("Quota Updated - Flow {}: {} - {} = {}", 
+				            dequeue_id, old_quota, deq_packet_ptr->levels_ranks[0], new_quota);
+				bm::Logger::get()->info("Updated quota_each_queue: [{}, {}, {}]", 
+				            quota_each_queue[0], quota_each_queue[1], quota_each_queue[2]);
+				// ============================================
 			}
 			else if (dequeued_done_right == true)
 			{
-BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
+				bm::Logger::get()->info("WARNING: dequeued_done_right=true but deq_packet_ptr=NULL");
+				bm::Logger::get()->info("Resetting all quotas to quantums");
 
 				//for (int i = 71; i>=0 ;i--)
         for (int i = 2; i>=0 ;i--)  // by hang. minimal topology: 3 flows (0-2)
@@ -365,7 +451,14 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
 				}
 			}
-		}
+		}  // end unconditional dequeue scope (was guarded by commented if)
+		}  // end if ((deq == 1) && (switch_is_ready == 1))
+		else
+		{
+			// ========== DEBUG: Dequeue condition not met ==========
+			bm::Logger::get()->info("Dequeue condition NOT met: deq={}, switch_is_ready={}", 
+			            deq, switch_is_ready);
+			// ======================================================
 		}
 	}
 
@@ -449,24 +542,45 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 		cur_ptr_FB = std::shared_ptr<hier_scheduler::fifo_bank>(std::make_shared<hier_scheduler::fifo_bank>());
 		deq_packet_ptr = NULL;
 		cur_ptr_FB = head_FB;
+		
+		// ========== DEBUG LOG: dequeue_FB Start ==========
+		bm::Logger::get()->info("dequeue_FB called: flow_id={}, in_time={}", flow_id, in_time);
+		// ==================================================
+		
 		while (cur_ptr_FB != NULL)
 		{
 			if ((cur_ptr_FB->flow_id == flow_id) && (cur_ptr_FB->left != NULL))
 			{
 				if(cur_ptr_FB->left->object != NULL)
 				{
-					if(cur_ptr_FB->left->object->pred <= in_time)
+					unsigned int packet_pred = cur_ptr_FB->left->object->pred;
+					bool pred_check = packet_pred <= in_time;
+					
+					// ========== DEBUG LOG: pred Check ==========
+					bm::Logger::get()->info("dequeue_FB - pred check: {} <= {} = {}", 
+					            packet_pred, in_time, pred_check);
+					// ===========================================
+					
+					if(pred_check)
 					{
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of in_time = {}", in_time)
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of cur_ptr_FB->left->object->pred = {}", cur_ptr_FB->left->object->pred)
 						deq_packet_ptr = cur_ptr_FB->left->object;
 						cur_ptr_FB->left = cur_ptr_FB->left->left;
+						bm::Logger::get()->info("dequeue_FB - Packet dequeued successfully");
+					}
+					else
+					{
+						bm::Logger::get()->info("dequeue_FB - pred check FAILED, packet NOT dequeued");
 					}
 				}
 
 				break;
 			}
 			cur_ptr_FB = cur_ptr_FB->bottom;
+		}
+		
+		if(deq_packet_ptr == NULL)
+		{
+			bm::Logger::get()->info("dequeue_FB - No packet found for flow_id={}", flow_id);
 		}
 	}
 
@@ -489,6 +603,13 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 // Apply dequeue operation in the scheduler, will be used inside the "Simple_Switch" target
 	unsigned int dequeue_my_scheduler()
 	{
+		// ========== DEBUG: dequeue_my_scheduler called ==========
+		bm::Logger::get()->info(">>> dequeue_my_scheduler CALLED");
+		bm::Logger::get()->info("    number_of_deq_pkts={}, num_of_read_pkts={}, number_of_enq_pkts={}", 
+		            number_of_dequeue_packets, number_of_read_packets, number_of_enqueue_packets);
+		bm::Logger::get()->info("    switch_is_ready={}", switch_is_ready);
+		// ========================================================
+		
 	flow_id = 0;
 	pred = 0;
 	enq = 0;
@@ -499,6 +620,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 	else
 	deq = 0;
 
+	bm::Logger::get()->info("    Setting deq={}, force_deq={}", deq, force_deq);
 
 	run_core();
 
