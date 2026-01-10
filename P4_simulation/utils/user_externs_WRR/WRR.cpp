@@ -72,8 +72,8 @@ int hier_scheduler::last_time = 0;
 
 //std::vector<unsigned int> hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
 //std::vector<unsigned int> hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
-//std::vector<unsigned int> hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
-//std::vector<unsigned int> hier_scheduler::quantums = {20000,2000,1000}; // minimal topology: 3 flows
+std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
+std::vector<unsigned int> bm::hier_scheduler::quantums = {20000,10000,2000}; // minimal topology: 3 flows
 //std::mutex hier_scheduler::quota_mutex;  // add by hang
 BM_REGISTER_EXTERN(hier_scheduler)
 BM_REGISTER_EXTERN_METHOD(hier_scheduler, my_scheduler, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&);

@@ -48,7 +48,7 @@ def configureP4Switch(**switch_args):
                 P4RuntimeSwitch.__init__(self, *opts, **kwargs)
 
             def describe(self):
-                print "%s -> gRPC port: %d" % (self.name, self.grpc_port)
+                print ("%s -> gRPC port: %d" % (self.name, self.grpc_port))  # add () by hang
 
         return ConfiguredP4RuntimeSwitch
     else:
@@ -62,7 +62,7 @@ def configureP4Switch(**switch_args):
                 P4Switch.__init__(self, *opts, **kwargs)
 
             def describe(self):
-                print "%s -> Thrift port: %d" % (self.name, self.thrift_port)
+                print ("%s -> Thrift port: %d" % (self.name, self.thrift_port))  # add () by hang
 
         return ConfiguredP4Switch
 
@@ -82,7 +82,7 @@ class ExerciseTopo(Topo):
             else:
                 switch_links.append(link)
 
-        for sw, params in switches.iteritems():
+        for sw, params in switches.items():
             if "program" in params:
                 switchClass = configureP4Switch(
                         sw_path=bmv2_exe,
@@ -268,7 +268,9 @@ class ExerciseRunner:
         sw_obj = self.net.get(sw_name)
         grpc_port = sw_obj.grpc_port
         device_id = sw_obj.device_id
-        runtime_json = sw_dict['runtime_json']
+        print("DEBUG: About to load", sw_dict["runtime_json"])  # add by hang
+        runtime_json=os.path.join("/home/vagrant/P4_simulation/program/qos", sw_dict["runtime_json"])  # adjust the path by hang
+        #runtime_json = sw_dict['runtime_json']
         self.logger('Configuring switch %s using P4Runtime with file %s' % (sw_name, runtime_json))
         with open(runtime_json, 'r') as sw_conf_file:
             outfile = '%s/%s-p4runtime-requests.txt' %(self.log_dir, sw_name)
@@ -303,7 +305,7 @@ class ExerciseRunner:
             P4Runtime, depending if any command or runtime JSON files were
             provided for the switches.
         """
-        for sw_name, sw_dict in self.switches.iteritems():
+        for sw_name, sw_dict in self.switches.items():
             if 'cli_input' in sw_dict:
                 self.program_switch_cli(sw_name, sw_dict)
             if 'runtime_json' in sw_dict:
@@ -357,7 +359,7 @@ class ExerciseRunner:
             print('corresponding txt file in %s:' % self.log_dir)
             print(' for example run:  cat %s/s1-p4runtime-requests.txt' % self.log_dir)
             print('')
-                
+
         sending_function(self)
 
         CLI(self.net)
@@ -389,4 +391,3 @@ if __name__ == '__main__':
                               args.switch_json, args.behavioral_exe, args.quiet)
 
     exercise.run_exercise()
-

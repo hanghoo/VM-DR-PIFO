@@ -83,7 +83,8 @@ class P4Switch(Switch):
         self.output = open(logfile, 'w')
         self.thrift_port = thrift_port
         if check_listening_on_port(self.thrift_port):
-            error('%s cannot bind port %d because it is bound by another process\n' % (self.name, self.grpc_port))
+            error('%s cannot bind thrift port %d because it is bound by another process\n' % (
+                self.name, self.thrift_port))
             exit(1)
         self.pcap_dump = pcap_dump
         self.enable_debugger = enable_debugger
@@ -137,8 +138,16 @@ class P4Switch(Switch):
             args.append("--debugger")
         if self.log_console:
             args.append("--log-console")
-        args.append(" -- --load-modules=/home/p4/tutorials/utils/user_externs/div.so ")
-        args.append("--grpc-server-addr 0.0.0.0:" + str(50051))
+        # Reduce log verbosity to speed up simulation and reduce log file size
+        # Options: trace, debug, info, warn, error, off
+        # Use 'warn' for smallest log files (only warnings/errors, no packet info)
+        # Use 'info' to see key events (DEQUEUE SUCCESS, SELECTED) but larger log files
+        # Use 'debug' for detailed debugging (very large log files)
+        args.extend(['--log-level', 'warn'])  # Changed to 'warn' to reduce log file size
+        # Non-gRPC simple_switch does not support --grpc-server-addr.
+        # Also, qos.json uses the extern type `hier_scheduler`, which is provided
+        # by the WRR module. We must load it before parsing the JSON.
+        args.append("-- --load-modules=/home/vagrant/P4_simulation/utils/user_externs_WRR/WRR.so ")
         info(' '.join(args) + "\n")
 
         pid = None

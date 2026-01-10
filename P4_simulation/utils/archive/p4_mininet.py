@@ -45,14 +45,14 @@ class P4Host(Host):
         return r
 
     def describe(self):
-        print "**********"
-        print self.name
-        print "default interface: %s\t%s\t%s" %(
+        print ("**********")  # add () by hang
+        print (self.name)
+        print ("default interface: %s\t%s\t%s" %(
             self.defaultIntf().name,
             self.defaultIntf().IP(),
             self.defaultIntf().MAC()
-        )
-        print "**********"
+        ))
+        print ("**********")  # add () by hang
 
 class P4Switch(Switch):
     """P4 virtual switch"""
@@ -83,7 +83,8 @@ class P4Switch(Switch):
         self.output = open(logfile, 'w')
         self.thrift_port = thrift_port
         if check_listening_on_port(self.thrift_port):
-            error('%s cannot bind port %d because it is bound by another process\n' % (self.name, self.grpc_port))
+            error('%s cannot bind thrift port %d because it is bound by another process\n' % (
+                self.name, self.thrift_port))
             exit(1)
         self.pcap_dump = pcap_dump
         self.enable_debugger = enable_debugger
@@ -129,7 +130,7 @@ class P4Switch(Switch):
             args.extend(['--thrift-port', str(self.thrift_port)])
         if self.nanomsg:
             args.extend(['--nanolog', self.nanomsg])
-#        args.append("--load-modules=./user_externs/div.so")        
+#        args.append("--load-modules=./user_externs/div.so")
         args.extend(['--device-id', str(self.device_id)])
         P4Switch.device_id += 1
         args.append(self.json_path)
@@ -137,8 +138,10 @@ class P4Switch(Switch):
             args.append("--debugger")
         if self.log_console:
             args.append("--log-console")
-        args.append(" -- --load-modules=/home/p4/tutorials/utils/user_externs/div.so ")
-        args.append("--grpc-server-addr 0.0.0.0:" + str(50051))
+        # Non-gRPC simple_switch does not support --grpc-server-addr.
+        # Also, qos.json uses the extern type `hier_scheduler`, which is provided
+        # by the WRR module. We must load it before parsing the JSON.
+        args.append("-- --load-modules=/home/vagrant/P4_simulation/utils/user_externs_WRR/WRR.so ")
         info(' '.join(args) + "\n")
 
         pid = None

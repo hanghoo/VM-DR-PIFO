@@ -22,6 +22,43 @@
 using namespace std::chrono;
 #pragma once
 
+// ========== LOGGING CONTROL ==========
+// Performance mode: Set to 1 to COMPLETELY disable all logging (zero overhead)
+// This removes all log calls at compile time, ensuring accurate latency measurements
+// Set to 0 to enable logging (for debugging)
+#ifndef WRR_DISABLE_LOGGING
+#define WRR_DISABLE_LOGGING 0  // Default: enable logging
+#endif
+
+// Verbose logging control: Set to 1 to enable verbose debug logs
+// Set to 0 to disable verbose logging (faster, smaller logs)
+#ifndef WRR_VERBOSE_LOGGING
+#define WRR_VERBOSE_LOGGING 0
+#endif
+
+// Macro for conditional verbose logging
+#if WRR_VERBOSE_LOGGING
+#define WRR_LOG_VERBOSE(level, ...) bm::Logger::get()->level(__VA_ARGS__)
+#else
+#define WRR_LOG_VERBOSE(level, ...) ((void)0)
+#endif
+
+// Macro for all logging (completely disabled in performance mode)
+#if WRR_DISABLE_LOGGING
+#define WRR_LOG(level, ...) ((void)0)
+#define WRR_LOG_INFO(...) ((void)0)
+#define WRR_LOG_DEBUG(...) ((void)0)
+#define WRR_LOG_WARN(...) ((void)0)
+#define WRR_LOG_ERROR(...) ((void)0)
+#else
+#define WRR_LOG(level, ...) bm::Logger::get()->level(__VA_ARGS__)
+#define WRR_LOG_INFO(...) bm::Logger::get()->info(__VA_ARGS__)
+#define WRR_LOG_DEBUG(...) bm::Logger::get()->debug(__VA_ARGS__)
+#define WRR_LOG_WARN(...) bm::Logger::get()->warn(__VA_ARGS__)
+#define WRR_LOG_ERROR(...) bm::Logger::get()->error(__VA_ARGS__)
+#endif
+// ======================================
+
 namespace bm {
 
 // if the rank = 0, that means this level is not used (pkts will be handled in a FIFO order in this level), the lowest rank in any level is "1".
@@ -37,7 +74,13 @@ class hier_scheduler : public bm::ExternType {
 void init() override {  // Attributes
   static constexpr std::uint32_t QUIET = 0u;
   // Init variables
-  verbose_ = verbose.get<std::uint32_t>() != QUIET;};
+  verbose_ = verbose.get<std::uint32_t>() != QUIET;
+  // ========== DEBUG: Verify module loaded ==========
+  WRR_LOG_INFO("========================================");
+  WRR_LOG_INFO("WRR Module INITIALIZED successfully!");
+  WRR_LOG_INFO("========================================");
+  // =================================================
+};
 
 // the packet struct that presents any packet inside the scheduler.
 	struct packet {
@@ -132,6 +175,17 @@ void init() override {  // Attributes
 
 	void my_scheduler(const Data& in_flow_id, const Data& number_of_levels_used, const Data& in_pred, const Data& in_arrival_time, const Data& in_shaping, const Data& in_enq, const Data& in_pkt_ptr, const Data& in_deq, const Data& reset_time)
 	{
+		// ========== DEBUG: Function called (reduced logging) ==========
+		// Only log when deq=1 (dequeue operation) to reduce log size
+		// Changed to debug level to reduce log file size
+		if (in_deq.get<uint32_t>() == 1) {
+			WRR_LOG_DEBUG(">>> my_scheduler CALLED: flow_id={}, enq={}, deq={}, pkt_ptr={}",
+			            in_flow_id.get<uint32_t>(),
+			            in_enq.get<uint32_t>(),
+			            in_deq.get<uint32_t>(),
+			            in_pkt_ptr.get<uint32_t>());
+		}
+		// ============================================
 
 // copy the inputs values :: Todo : they should be removed later and just use the inputs directly.
 
@@ -224,6 +278,15 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 //and each level is responsible of enqueue and dequeue in each queue inside this level
 	void run_core()
 	{
+		// ========== DEBUG: run_core called (reduced logging) ==========
+		// Only log when deq=1 (dequeue operation) to reduce log size
+		// Changed to debug level to reduce log file size
+		if (deq == 1) {
+			WRR_LOG_DEBUG(">>> run_core CALLED: enq={}, deq={}, switch_is_ready={}",
+			            enq, deq, switch_is_ready);
+		}
+		// ============================================
+
 		deq_packet_ptr = NULL;
 		if (enq == 1)
 		{
@@ -249,12 +312,25 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			enq_packet_ptr->levels_ranks = pkt_levels_ranks;
 			enq_packet_ptr->arrival_time = arrival_time;
 
+			// ========== DEBUG LOG: Enqueue (reduced logging) ==========
+			// Commented out to reduce log size - enqueue happens frequently
+			// bm::Logger::get()->info("========================================");
+			// bm::Logger::get()->info("WRR Enqueue Operation");
+			// bm::Logger::get()->info("flow_id: {}, rank: {}, pred: {}, pkt_ptr: {}",
+			//             flow_id, pkt_levels_ranks[0], pred, pkt_ptr);
+			// ========================================
+
 			level_controller(enq_packet_ptr, enq, 0);
 
 		}
 
 		if ((deq == 1)&&(switch_is_ready == 1))
 		{
+			// ========== DEBUG LOG: WRR Dequeue Start (debug level to reduce log size) ==========
+			WRR_LOG_DEBUG("========================================");
+			WRR_LOG_DEBUG("WRR Dequeue Operation Started");
+			WRR_LOG_DEBUG("Condition check: deq={}, switch_is_ready={}", deq, switch_is_ready);
+			// ===================================================
 
 			//last_time = std::time(0);
 			last_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -277,28 +353,69 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			unsigned int dequeue_id = 0;
 			unsigned int new_quota;
 			std::shared_ptr<fifo_bank> head_FS = NULL;
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 1")
+
+			// ========== DEBUG: Check FB[0] status (verbose logging only) ==========
+			WRR_LOG_VERBOSE(debug, "time_now: {}", time_now);
+			WRR_LOG_VERBOSE(debug, "Initial quota_each_queue: [{}, {}, {}]",
+			            quota_each_queue[0], quota_each_queue[1], quota_each_queue[2]);
+			WRR_LOG_VERBOSE(debug, "quantums: [{}, {}, {}]",
+			            quantums[0], quantums[1], quantums[2]);
+
+			if(FB[0] == NULL) {
+				WRR_LOG_WARN("WARNING: FB[0] is NULL - no packets in buffer!");
+			} else {
+				WRR_LOG_VERBOSE(debug, "FB[0] is not NULL, checking for packets...");
+				std::shared_ptr<fifo_bank> debug_FB = FB[0];
+				int packet_count = 0;
+				while(debug_FB != NULL) {
+					if(debug_FB->left != NULL && debug_FB->left->object != NULL) {
+						packet_count++;
+						WRR_LOG_VERBOSE(debug, "  Found packet in FB[0]: flow_id={}, rank={}, pred={}",
+						            debug_FB->left->object->flow_id,
+						            debug_FB->left->object->levels_ranks[0],
+						            debug_FB->left->object->pred);
+					}
+					debug_FB = debug_FB->bottom;
+				}
+				WRR_LOG_VERBOSE(debug, "Total packets in FB[0]: {}", packet_count);
+			}
+			// ===============================================
+
 		//if(time_now >= 200000)
 		{
 			//for (int i = 0; i<72 ;i++)
       for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
 			{
 				head_FS = FB[0];
+				bool found_flow_i = false;
 				while((head_FS != NULL))
 				{
 					if(head_FS->left != NULL)
 					{
 						if(head_FS->left->object->flow_id == i)
 						{
-							if((quota_each_queue[i] >= head_FS->left->object->levels_ranks[0]))
+							found_flow_i = true;
+							unsigned int packet_rank = head_FS->left->object->levels_ranks[0];
+							bool quota_check = quota_each_queue[i] >= packet_rank;
+
+							// ========== DEBUG LOG: First Round Check (verbose only) ==========
+							WRR_LOG_VERBOSE(debug, "First Round - Flow {}: quota={}, rank={}, check={}",
+							            i, quota_each_queue[i], packet_rank, quota_check);
+							// ==================================================
+
+							if(quota_check)
 							{
 								dequeued_done_right = true;
 								dequeue_right_id = head_FS->left->object->flow_id;
+								WRR_LOG_INFO("First Round - Flow {} SELECTED for dequeue!", i);
 								break;
 							}
 						}
 					}
 					head_FS = head_FS->bottom;
+				}
+				if(!found_flow_i) {
+					WRR_LOG_VERBOSE(debug, "First Round - Flow {}: NO PACKET FOUND in FB[0]", i);
 				}
 				if(dequeued_done_right == true)
 				{
@@ -307,55 +424,102 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			}
 			if(dequeued_done_right == false)
 			{
-//				BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 2")
+				WRR_LOG_VERBOSE(debug, "First Round: No packet selected, entering Second Round");
 				//for (int i = 0; i<72 ;i++)
         for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
 				{
 					unsigned int current_quota = quota_each_queue[i];
+					bool quota_reset = false;
+
 					if(current_quota < quantums[i])
 					{
 						quota_each_queue.erase(quota_each_queue.begin() + i);
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
+						quota_reset = true;
+
+						// ========== DEBUG LOG: Quota Reset (reduced logging) ==========
+						// Commented out to reduce log size - uncomment if needed for debugging
+						// bm::Logger::get()->info("Second Round - Flow {}: quota reset from {} to {}",
+						//             i, current_quota, quantums[i]);
+						// ============================================
 					}
 
 					head_FS = FB[0];
+					bool found_flow_i_second = false;
 					while((head_FS != NULL) &&(dequeued_done_right == false))
 					{
 						if(head_FS->left != NULL)
 						{
 							if(head_FS->left->object->flow_id == i)
 							{
-								if(quota_each_queue[i] >= head_FS->left->object->levels_ranks[0])
+								found_flow_i_second = true;
+								unsigned int packet_rank = head_FS->left->object->levels_ranks[0];
+								bool quota_check = quota_each_queue[i] >= packet_rank;
+
+								// ========== DEBUG LOG: Second Round Check (verbose only) ==========
+								WRR_LOG_VERBOSE(debug, "Second Round - Flow {}: quota={}, rank={}, check={}",
+								            i, quota_each_queue[i], packet_rank, quota_check);
+								// =================================================
+
+								if(quota_check)
 								{
 									dequeued_done_right = true;
 									dequeue_right_id = head_FS->left->object->flow_id;
+									WRR_LOG_INFO("Second Round - Flow {} SELECTED for dequeue!", i);
 								}
 							}
 						}
 						head_FS = head_FS->bottom;
 					}
+					if(!found_flow_i_second) {
+						WRR_LOG_VERBOSE(debug, "Second Round - Flow {}: NO PACKET FOUND in FB[0]", i);
+					}
 				}
 			}
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 5")
 			if((dequeued_done_right == true))
 			{
-//				BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 5, dequeue_right_id = {}", dequeue_right_id)
+				WRR_LOG_VERBOSE(debug, "Calling dequeue_FB: flow_id={}, time_now={}", dequeue_right_id, time_now);
 				dequeue_id = dequeue_right_id;
 				dequeue_FB(deq_packet_ptr, dequeue_id, FB[0], time_now);
+
+				// ========== DEBUG LOG: dequeue_FB Result ==========
+				if(deq_packet_ptr != NULL)
+				{
+					WRR_LOG_INFO(">>> DEQUEUE SUCCESS - Packet will be transmitted: flow_id={}, rank={}, pred={}, pkt_ptr={}",
+					            deq_packet_ptr->flow_id,
+					            deq_packet_ptr->levels_ranks[0],
+					            deq_packet_ptr->pred,
+					            deq_packet_ptr->pkt_ptr);
+				}
+				else
+				{
+					WRR_LOG_DEBUG("dequeue_FB FAILED: returned NULL (pred check failed?)");
+				}
+				// ==================================================
 			}
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 6")
+			else
+			{
+				WRR_LOG_VERBOSE(debug, "No packet selected for dequeue (dequeued_done_right=false)");
+			}
 
 			if (deq_packet_ptr != NULL)
 			{
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 7, deq_packet_ptr = {}", deq_packet_ptr)
+				unsigned int old_quota = quota_each_queue[dequeue_id];
 				new_quota = quota_each_queue[dequeue_id] - deq_packet_ptr->levels_ranks[0];
 				quota_each_queue.erase(quota_each_queue.begin() + dequeue_id);
 				quota_each_queue.insert(quota_each_queue.begin() + dequeue_id, new_quota);
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation dequeue_id = {}, new_quota = {}, quota_each_queue[dequeue_id] = {}", dequeue_id, new_quota, quota_each_queue[dequeue_id])
+
+				// ========== DEBUG LOG: Quota Update (debug level to reduce log size) ==========
+				WRR_LOG_DEBUG("Quota Updated - Flow {}: {} - {} = {}",
+				            dequeue_id, old_quota, deq_packet_ptr->levels_ranks[0], new_quota);
+				WRR_LOG_DEBUG("Updated quota_each_queue: [{}, {}, {}]",
+				            quota_each_queue[0], quota_each_queue[1], quota_each_queue[2]);
+				// ============================================
 			}
 			else if (dequeued_done_right == true)
 			{
-BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
+				WRR_LOG_WARN("WARNING: dequeued_done_right=true but deq_packet_ptr=NULL");
+				WRR_LOG_DEBUG("Resetting all quotas to quantums");
 
 				//for (int i = 71; i>=0 ;i--)
         for (int i = 2; i>=0 ;i--)  // by hang. minimal topology: 3 flows (0-2)
@@ -365,7 +529,14 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
 				}
 			}
-		}
+		}  // end unconditional dequeue scope (was guarded by commented if)
+		}  // end if ((deq == 1) && (switch_is_ready == 1))
+		else
+		{
+			// ========== DEBUG: Dequeue condition not met (debug level to reduce log size) ==========
+			WRR_LOG_DEBUG("Dequeue condition NOT met: deq={}, switch_is_ready={}",
+			            deq, switch_is_ready);
+			// ======================================================
 		}
 	}
 
@@ -449,24 +620,50 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 		cur_ptr_FB = std::shared_ptr<hier_scheduler::fifo_bank>(std::make_shared<hier_scheduler::fifo_bank>());
 		deq_packet_ptr = NULL;
 		cur_ptr_FB = head_FB;
+
+		// ========== DEBUG LOG: dequeue_FB Start ==========
+		// Reduced logging - uncomment if needed for debugging
+		// bm::Logger::get()->info("dequeue_FB called: flow_id={}, in_time={}", flow_id, in_time);
+		// ==================================================
+
 		while (cur_ptr_FB != NULL)
 		{
 			if ((cur_ptr_FB->flow_id == flow_id) && (cur_ptr_FB->left != NULL))
 			{
 				if(cur_ptr_FB->left->object != NULL)
 				{
-					if(cur_ptr_FB->left->object->pred <= in_time)
+					unsigned int packet_pred = cur_ptr_FB->left->object->pred;
+					bool pred_check = packet_pred <= in_time;
+
+					// ========== DEBUG LOG: pred Check (reduced logging) ==========
+					// Commented out to reduce log size - uncomment if needed for debugging
+					// bm::Logger::get()->info("dequeue_FB - pred check: {} <= {} = {}",
+					//             packet_pred, in_time, pred_check);
+					// ===========================================
+
+					if(pred_check)
 					{
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of in_time = {}", in_time)
-//BMLOG_DEBUG("Invoked ELBEDIWY testing of cur_ptr_FB->left->object->pred = {}", cur_ptr_FB->left->object->pred)
 						deq_packet_ptr = cur_ptr_FB->left->object;
 						cur_ptr_FB->left = cur_ptr_FB->left->left;
+						// Reduced logging - uncomment if needed for debugging
+						// bm::Logger::get()->info("dequeue_FB - Packet dequeued successfully");
+					}
+					else
+					{
+						// Reduced logging - uncomment if needed for debugging
+						// bm::Logger::get()->info("dequeue_FB - pred check FAILED, packet NOT dequeued");
 					}
 				}
 
 				break;
 			}
 			cur_ptr_FB = cur_ptr_FB->bottom;
+		}
+
+		if(deq_packet_ptr == NULL)
+		{
+			// Reduced logging - uncomment if needed for debugging
+			// bm::Logger::get()->info("dequeue_FB - No packet found for flow_id={}", flow_id);
 		}
 	}
 
@@ -489,6 +686,13 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 // Apply dequeue operation in the scheduler, will be used inside the "Simple_Switch" target
 	unsigned int dequeue_my_scheduler()
 	{
+		// ========== DEBUG: dequeue_my_scheduler called (debug level to reduce log size) ==========
+		WRR_LOG_DEBUG(">>> dequeue_my_scheduler CALLED");
+		WRR_LOG_DEBUG("    number_of_deq_pkts={}, num_of_read_pkts={}, number_of_enq_pkts={}",
+		            number_of_dequeue_packets, number_of_read_packets, number_of_enqueue_packets);
+		WRR_LOG_DEBUG("    switch_is_ready={}", switch_is_ready);
+		// ========================================================
+
 	flow_id = 0;
 	pred = 0;
 	enq = 0;
@@ -499,6 +703,7 @@ BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation 8")
 	else
 	deq = 0;
 
+	WRR_LOG_DEBUG("    Setting deq={}, force_deq={}", deq, force_deq);
 
 	run_core();
 

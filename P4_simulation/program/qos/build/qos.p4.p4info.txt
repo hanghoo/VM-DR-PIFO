@@ -105,9 +105,9 @@ registers {
 }
 registers {
   preamble {
-    id: 376823445
-    name: "MyIngress.lowest_rank"
-    alias: "lowest_rank"
+    id: 370236783
+    name: "MyIngress.delete_this"
+    alias: "delete_this"
   }
   type_spec {
     bitstring {
@@ -117,36 +117,6 @@ registers {
     }
   }
   size: 1
-}
-registers {
-  preamble {
-    id: 380157047
-    name: "MyIngress.lowest_rank_flow_id"
-    alias: "lowest_rank_flow_id"
-  }
-  type_spec {
-    bitstring {
-      bit {
-        bitwidth: 48
-      }
-    }
-  }
-  size: 1
-}
-registers {
-  preamble {
-    id: 375943158
-    name: "MyIngress.flows_min_rank"
-    alias: "flows_min_rank"
-  }
-  type_spec {
-    bitstring {
-      bit {
-        bitwidth: 48
-      }
-    }
-  }
-  size: 1024
 }
 type_info {
 }

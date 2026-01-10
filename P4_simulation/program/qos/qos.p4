@@ -141,7 +141,7 @@ control MyIngress(inout headers hdr,
     floor_extern<bit<48>>(1) floor_extern_obj;
 
     bit <48> level_0_rank;
-    bit <48> in_pred= 200000;
+    bit <48> in_pred= 2000;
     bit <48> in_pkt_ptr;
     bit <48> out_pkt_ptr=0;
     bit <48> number_of_levels_used = 1;
