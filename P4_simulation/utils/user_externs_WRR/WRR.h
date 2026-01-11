@@ -431,8 +431,35 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 					unsigned int current_quota = quota_each_queue[i];
 					bool quota_reset = false;
 
+					// ========== Check queue status BEFORE quota reset ==========
+					std::shared_ptr<fifo_bank> check_FB = FB[0];
+					bool has_packets = false;
+					unsigned int packet_count_in_flow = 0;
+					while(check_FB != NULL)
+					{
+						if(check_FB->flow_id == i)
+						{
+							// Found the flow, count packets in its queue
+							if(check_FB->left != NULL)
+							{
+								has_packets = true;
+								std::shared_ptr<fifo_bank> count_ptr = check_FB->left;
+								while(count_ptr != NULL)
+								{
+									packet_count_in_flow++;
+									count_ptr = count_ptr->left;
+								}
+							}
+							break;
+						}
+						check_FB = check_FB->bottom;
+					}
+					// ==========================================================
+
 					if(current_quota < quantums[i])
 					{
+						WRR_LOG_INFO("Second Round - Flow {}: BEFORE quota reset - quota={}, quantum={}, has_packets={}, packet_count={}",
+						            i, current_quota, quantums[i], has_packets, packet_count_in_flow);
 						quota_each_queue.erase(quota_each_queue.begin() + i);
 						quota_each_queue.insert(quota_each_queue.begin() + i, quantums[i]);
 						quota_reset = true;
@@ -442,6 +469,12 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 						// bm::Logger::get()->info("Second Round - Flow {}: quota reset from {} to {}",
 						//             i, current_quota, quantums[i]);
 						// ============================================
+					}
+					else
+					{
+						// Flow doesn't need quota reset, but log its status anyway
+						WRR_LOG_DEBUG("Second Round - Flow {}: NO quota reset needed - quota={}, quantum={}, has_packets={}, packet_count={}",
+						            i, current_quota, quantums[i], has_packets, packet_count_in_flow);
 					}
 
 					head_FS = FB[0];
