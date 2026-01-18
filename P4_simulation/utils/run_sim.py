@@ -21,11 +21,12 @@ def sending_function(self):
 
     # Send traffic: h1->h_r1, h2->h_r2, h3->h_r3
     # Each sender sends to its corresponding receiver
-    # Use high send rate (--rate 0.01) to create queue competition
-    # This makes WRR weight differences more visible
-    h1.cmd('./send.py --h=./workload/flow_1.txt --des=10.0.2.1 --rate=0.01 > ./outputs/sender_h1.txt &')
+    # Use VERY high send rate (--rate 0.001) to create queue buildup
+    # This makes WRR weight differences more visible and allows queue accumulation
+    # Note: Lower rate value = higher send rate = more packets per second
+    h1.cmd('./send.py --h=./workload/flow_1.txt --des=10.0.2.1 --rate=0.001 > ./outputs/sender_h1.txt &')
     sleep(0.01)  # Reduced from 0.1 to start flows almost simultaneously
-    h2.cmd('./send.py --h=./workload/flow_2.txt --des=10.0.2.2 --rate=0.01 > ./outputs/sender_h2.txt &')
+    h2.cmd('./send.py --h=./workload/flow_2.txt --des=10.0.2.2 --rate=0.001 > ./outputs/sender_h2.txt &')
     sleep(0.01)  # Reduced from 0.1 to start flows almost simultaneously
-    h3.cmd('./send.py --h=./workload/flow_3.txt --des=10.0.2.3 --rate=0.01 > ./outputs/sender_h3.txt &')
+    h3.cmd('./send.py --h=./workload/flow_3.txt --des=10.0.2.3 --rate=0.001 > ./outputs/sender_h3.txt &')
     sleep(0.01)  # Small delay to ensure all flows start

@@ -21,7 +21,7 @@ def get_if():
             iface = i
             break
     if not iface:
-        print "Cannot find eth0 interface"
+        print("Cannot find eth0 interface")
         exit(1)
     return iface
 
@@ -31,6 +31,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--h", help="The host ID, to send the corresponding flow", type=str)
     parser.add_argument("--des", help="IP address of the destination", type=str)
+    parser.add_argument("--rate", help="Send rate: sleep time between packets in seconds (default: 0.01 for high rate)", type=float, default=0.01)
     #parser.add_argument("--m", help="Raw Message", type=str)
 
     args = parser.parse_args()
@@ -56,16 +57,24 @@ def main():
             read_rank = read_rank + 1
             pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff", type=0x800) / IP(src=get_if_addr(iface), dst=addr, options=IPOption(rank_bytes)) / TCP() / args.m
             #pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff", type=0x800) / IP(src=get_if_addr(iface), dst=addr, options=IPOption('\x00\x02\x07\x88')) / TCP() / args.m
-            pkt_good = Ether(str(pkt))
+            #pkt_good = Ether(str(pkt))  # changed by hang. send pkt directly.
 
             print("This host has sent ",read_rank,"packets until now :", time.time())
 
+            # try:
+            #     sendp(pkt, iface=iface, verbose=False)
+            #     if read_rank > 4445:
+            #     	sleep(0.1)
+            #     else:
+            #     	sleep(0.1)
+            # except KeyboardInterrupt:
+            #     raise
+
             try:
-                sendp(pkt_good, iface=iface, verbose=False)
-                if read_rank > 4445:
-                	sleep(0.1)
-                else:
-                	sleep(0.1)
+                sendp(pkt, iface=iface, verbose=False)
+                # Use configurable sleep time for send rate control
+                # Lower sleep time = higher send rate = more queue buildup = better WRR visibility
+                sleep(args.rate)
             except KeyboardInterrupt:
                 raise
 

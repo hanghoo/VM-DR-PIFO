@@ -27,7 +27,8 @@ using namespace std::chrono;
 // This removes all log calls at compile time, ensuring accurate latency measurements
 // Set to 0 to enable logging (for debugging)
 #ifndef WRR_DISABLE_LOGGING
-#define WRR_DISABLE_LOGGING 0  // Default: enable logging
+//#define WRR_DISABLE_LOGGING 0  // Default: enable logging
+#define WRR_DISABLE_LOGGING 1
 #endif
 
 // Verbose logging control: Set to 1 to enable verbose debug logs
@@ -345,7 +346,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			}
 
 			//std::this_thread::sleep_for(std::chrono::microseconds(810));  // equivalent to 1ms (with adding the overhead of the code)
-			std::this_thread::sleep_for(std::chrono::microseconds(10));  // equivalent to 1ms (with adding the overhead of the code)
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));  // equivalent to 1ms (with adding the overhead of the code)
 
 			deq_packet_ptr = NULL;
 			bool dequeued_done_right = false;
@@ -513,6 +514,39 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			{
 				WRR_LOG_VERBOSE(debug, "Calling dequeue_FB: flow_id={}, time_now={}", dequeue_right_id, time_now);
 				dequeue_id = dequeue_right_id;
+
+				// ========== Print all flow information BEFORE dequeue ==========
+				WRR_LOG_INFO(">>> DEQUEUE - All flow status (BEFORE dequeue_FB):");
+				for (unsigned int check_flow = 0; check_flow < quantums.size(); check_flow++)
+				{
+					std::shared_ptr<fifo_bank> check_FB = FB[0];
+					bool check_has_packets = false;
+					unsigned int check_packet_count = 0;
+					while(check_FB != NULL)
+					{
+						if(check_FB->flow_id == check_flow)
+						{
+							// Found the flow, count packets in its queue (including head packet)
+							if(check_FB->left != NULL)
+							{
+								check_has_packets = true;
+								std::shared_ptr<fifo_bank> count_ptr = check_FB->left;
+								while(count_ptr != NULL)
+								{
+									check_packet_count++;
+									count_ptr = count_ptr->left;
+								}
+							}
+							break;
+						}
+						check_FB = check_FB->bottom;
+					}
+					WRR_LOG_INFO("  Flow {}: quota={}, quantum={}, has_packets={}, packet_count={}",
+					            check_flow, quota_each_queue[check_flow], quantums[check_flow],
+					            check_has_packets, check_packet_count);
+				}
+				// ==========================================================
+
 				dequeue_FB(deq_packet_ptr, dequeue_id, FB[0], time_now);
 
 				// ========== DEBUG LOG: dequeue_FB Result ==========
@@ -523,6 +557,38 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 					            deq_packet_ptr->levels_ranks[0],
 					            deq_packet_ptr->pred,
 					            deq_packet_ptr->pkt_ptr);
+
+					// ========== Print all flow information after dequeue ==========
+					WRR_LOG_INFO(">>> DEQUEUE - All flow status (AFTER dequeue_FB):");
+					for (unsigned int check_flow = 0; check_flow < quantums.size(); check_flow++)
+					{
+						std::shared_ptr<fifo_bank> check_FB = FB[0];
+						bool check_has_packets = false;
+						unsigned int check_packet_count = 0;
+						while(check_FB != NULL)
+						{
+							if(check_FB->flow_id == check_flow)
+							{
+								// Found the flow, count packets in its queue
+								if(check_FB->left != NULL)
+								{
+									check_has_packets = true;
+									std::shared_ptr<fifo_bank> count_ptr = check_FB->left;
+									while(count_ptr != NULL)
+									{
+										check_packet_count++;
+										count_ptr = count_ptr->left;
+									}
+								}
+								break;
+							}
+							check_FB = check_FB->bottom;
+						}
+						WRR_LOG_INFO("  Flow {}: quota={}, quantum={}, has_packets={}, packet_count={}",
+						            check_flow, quota_each_queue[check_flow], quantums[check_flow],
+						            check_has_packets, check_packet_count);
+					}
+					// ==========================================================
 				}
 				else
 				{
