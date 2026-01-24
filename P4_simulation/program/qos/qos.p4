@@ -7,6 +7,8 @@ extern hier_scheduler<T1,T2> {
 void my_scheduler(in T1 in_flow_id, in T1 number_of_levels_used, in T1 in_pred, in T1 in_arrival_time, in T2 in_shaping, in T2 in_enq, in T1 in_pkt_ptr, in T2 in_deq, in T2 reset_time);
 void pass_rank_values ( in T1 rank_value, in T1 level_id);
 void pass_updated_rank_values ( in T1 rank_value, in T1 flow_id, in T1 level_id);
+void set_quantum(in T1 queue_idx, in T1 quantum_value, in T2 reset_quota);
+void get_quantum(in T1 queue_idx, out T1 quantum_value);
 }
 
 extern floor_extern<T1> {
@@ -155,12 +157,53 @@ control MyIngress(inout headers hdr,
 
     register<bit<48>>(1) delete_this;
 
+    // Register to store quantum values read by get_quantum()
+    // Index 0-2 for queue 0-2 quantum values
+    register<bit<48>>(3) quantum_storage;
+
     bit <48> in_flow_id = 0;
+    bit <48> quantum_read_value = 0;
 
     action assign_flow_id(bit <48> flow_id) {
         in_flow_id = flow_id;
     }
 
+    // Action to set quantum for a queue
+    action set_wrr_quantum(bit<48> queue_idx, bit<48> quantum_value, bit<1> reset_quota) {
+        my_hier.set_quantum(queue_idx, quantum_value, reset_quota);
+    }
+
+    // Action to get quantum for a queue and store it in register
+    action get_wrr_quantum(bit<48> queue_idx) {
+        my_hier.get_quantum(queue_idx, quantum_read_value);
+        quantum_storage.write((bit<32>)queue_idx, quantum_read_value);
+    }
+
+    // Table to set quantum values via P4Runtime
+    table set_quantum_table {
+        key = {
+            hdr.ipv4.srcAddr[15:0]: exact;  // Use lower 16 bits as queue index
+        }
+        actions = {
+            set_wrr_quantum;
+            NoAction;
+        }
+        size = 10;
+        default_action = NoAction();
+    }
+
+    // Table to get quantum values via P4Runtime
+    table get_quantum_table {
+        key = {
+            hdr.ipv4.srcAddr[15:0]: exact;  // Use lower 16 bits as queue index
+        }
+        actions = {
+            get_wrr_quantum;
+            NoAction;
+        }
+        size = 10;
+        default_action = NoAction();
+    }
 
     table lookup_flow_id {
         key = {
@@ -175,6 +218,11 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
+        // Apply quantum operation tables first
+        // These tables are controlled via P4Runtime and will only execute if matched
+        // Default action is NoAction, so normal packets are unaffected
+        set_quantum_table.apply();
+        get_quantum_table.apply();
 
         lookup_flow_id.apply();
 

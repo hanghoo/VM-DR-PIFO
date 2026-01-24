@@ -4,9 +4,13 @@
       "name" : "scalars_0",
       "id" : 0,
       "fields" : [
-        ["tmp", 48, false],
+        ["tmp", 32, false],
+        ["tmp_0", 48, false],
         ["in_pkt_ptr_0", 48, false],
-        ["in_flow_id_0", 48, false]
+        ["in_flow_id_0", 48, false],
+        ["quantum_read_value_0", 48, false],
+        ["key_0", 16, false],
+        ["key_1", 16, false]
       ]
     },
     {
@@ -182,7 +186,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 249,
+        "line" : 297,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
@@ -198,7 +202,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 154,
+        "line" : 156,
         "column" : 25,
         "source_fragment" : "register_last_ptr"
       },
@@ -210,11 +214,23 @@
       "id" : 1,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 156,
+        "line" : 158,
         "column" : 25,
         "source_fragment" : "delete_this"
       },
       "size" : 1,
+      "bitwidth" : 48
+    },
+    {
+      "name" : "MyIngress.quantum_storage",
+      "id" : 2,
+      "source_info" : {
+        "filename" : "qos.p4",
+        "line" : 162,
+        "column" : 25,
+        "source_fragment" : "quantum_storage"
+      },
+      "size" : 3,
       "bitwidth" : 48
     }
   ],
@@ -224,7 +240,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 226,
+        "line" : 274,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -296,8 +312,20 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.drop",
+      "name" : "NoAction",
       "id" : 2,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 3,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 4,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -310,7 +338,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 112,
+            "line" : 114,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
@@ -319,7 +347,7 @@
     },
     {
       "name" : "MyIngress.drop",
-      "id" : 3,
+      "id" : 5,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -332,7 +360,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 112,
+            "line" : 114,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
@@ -341,7 +369,7 @@
     },
     {
       "name" : "MyIngress.ipv4_forward",
-      "id" : 4,
+      "id" : 6,
       "runtime_data" : [
         {
           "name" : "dstAddr",
@@ -367,7 +395,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 116,
+            "line" : 118,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = port"
           }
@@ -386,7 +414,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 117,
+            "line" : 119,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
           }
@@ -405,7 +433,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 118,
+            "line" : 120,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
           }
@@ -447,7 +475,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 119,
+            "line" : 121,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -456,7 +484,7 @@
     },
     {
       "name" : "MyIngress.assign_flow_id",
-      "id" : 5,
+      "id" : 7,
       "runtime_data" : [
         {
           "name" : "flow_id",
@@ -478,7 +506,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 161,
+            "line" : 168,
             "column" : 8,
             "source_fragment" : "in_flow_id = flow_id"
           }
@@ -486,8 +514,145 @@
       ]
     },
     {
-      "name" : "qos158",
-      "id" : 6,
+      "name" : "MyIngress.set_wrr_quantum",
+      "id" : 8,
+      "runtime_data" : [
+        {
+          "name" : "queue_idx",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "quantum_value",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "reset_quota",
+          "bitwidth" : 1
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "_hier_scheduler_set_quantum",
+          "parameters" : [
+            {
+              "type" : "extern",
+              "value" : "MyIngress.my_hier"
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 2
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 173,
+            "column" : 8,
+            "source_fragment" : "my_hier.set_quantum(queue_idx, quantum_value, reset_quota)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.get_wrr_quantum",
+      "id" : 9,
+      "runtime_data" : [
+        {
+          "name" : "queue_idx",
+          "bitwidth" : 48
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "_hier_scheduler_get_quantum",
+          "parameters" : [
+            {
+              "type" : "extern",
+              "value" : "MyIngress.my_hier"
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "quantum_read_value_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 178,
+            "column" : 8,
+            "source_fragment" : "my_hier.get_quantum(queue_idx, quantum_read_value)"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "local",
+                    "value" : 0
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffffffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 179,
+            "column" : 30,
+            "source_fragment" : "(bit<32>)queue_idx"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.quantum_storage"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "quantum_read_value_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 179,
+            "column" : 8,
+            "source_fragment" : "quantum_storage.write((bit<32>)queue_idx, quantum_read_value)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos164",
+      "id" : 10,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -504,16 +669,87 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 158,
+            "line" : 164,
             "column" : 4,
             "source_fragment" : "bit <48> in_flow_id = 0;"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "key_0"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "srcAddr"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 185,
+            "column" : 12,
+            "source_fragment" : "hdr.ipv4.srcAddr[15:0]"
           }
         }
       ]
     },
     {
-      "name" : "qos188",
-      "id" : 7,
+      "name" : "qos198",
+      "id" : 11,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "key_1"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["ipv4", "srcAddr"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xffff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 198,
+            "column" : 12,
+            "source_fragment" : "hdr.ipv4.srcAddr[15:0]"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "qos236",
+      "id" : 12,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -534,7 +770,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 188,
+            "line" : 236,
             "column" : 8,
             "source_fragment" : "register_last_ptr.read(in_pkt_ptr,0)"
           }
@@ -576,7 +812,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 189,
+            "line" : 237,
             "column" : 8,
             "source_fragment" : "in_pkt_ptr = in_pkt_ptr + (bit<48>)(1)"
           }
@@ -599,7 +835,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 190,
+            "line" : 238,
             "column" : 8,
             "source_fragment" : "register_last_ptr.write(0,in_pkt_ptr)"
           }
@@ -609,7 +845,7 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["scalars", "tmp"]
+              "value" : ["scalars", "tmp_0"]
             },
             {
               "type" : "expression",
@@ -631,7 +867,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 194,
+            "line" : 242,
             "column" : 16,
             "source_fragment" : "(bit<48>)(hdr.ipv4.options)"
           }
@@ -645,7 +881,7 @@
             },
             {
               "type" : "field",
-              "value" : ["scalars", "tmp"]
+              "value" : ["scalars", "tmp_0"]
             },
             {
               "type" : "hexstr",
@@ -654,7 +890,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 196,
+            "line" : 244,
             "column" : 4,
             "source_fragment" : "my_hier.pass_rank_values(level_0_rank,0)"
           }
@@ -696,7 +932,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 199,
+            "line" : 247,
             "column" : 4,
             "source_fragment" : "in_flow_id = in_flow_id - 1"
           }
@@ -747,7 +983,7 @@
           ],
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 201,
+            "line" : 249,
             "column" : 12,
             "source_fragment" : "my_hier.my_scheduler(in_flow_id, number_of_levels_used, in_pred, in_pkt_ptr, in_shaping, in_enq, in_pkt_ptr, in_deq, reset_time)"
           }
@@ -761,20 +997,20 @@
       "id" : 0,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 108,
+        "line" : 110,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
-      "init_table" : "tbl_qos158",
+      "init_table" : "tbl_qos164",
       "tables" : [
         {
-          "name" : "tbl_qos158",
+          "name" : "tbl_qos164",
           "id" : 0,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 158,
+            "line" : 164,
             "column" : 4,
-            "source_fragment" : "bit <48> in_flow_id = 0;"
+            "source_fragment" : "bit <48> in_flow_id = 0; ..."
           },
           "key" : [],
           "match_type" : "exact",
@@ -783,25 +1019,128 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [6],
-          "actions" : ["qos158"],
-          "base_default_next" : "MyIngress.lookup_flow_id",
+          "action_ids" : [10],
+          "actions" : ["qos164"],
+          "base_default_next" : "MyIngress.set_quantum_table",
           "next_tables" : {
-            "qos158" : "MyIngress.lookup_flow_id"
+            "qos164" : "MyIngress.set_quantum_table"
           },
           "default_entry" : {
-            "action_id" : 6,
+            "action_id" : 10,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "MyIngress.lookup_flow_id",
+          "name" : "MyIngress.set_quantum_table",
           "id" : 1,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 165,
+            "line" : 183,
+            "column" : 10,
+            "source_fragment" : "set_quantum_table"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.srcAddr[15:0]",
+              "target" : ["scalars", "key_0"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 10,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8, 1],
+          "actions" : ["MyIngress.set_wrr_quantum", "NoAction"],
+          "base_default_next" : "tbl_qos198",
+          "next_tables" : {
+            "MyIngress.set_wrr_quantum" : "tbl_qos198",
+            "NoAction" : "tbl_qos198"
+          },
+          "default_entry" : {
+            "action_id" : 1,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_qos198",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 198,
+            "column" : 12,
+            "source_fragment" : "hdr.ipv4.srcAddr[15:0]"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [11],
+          "actions" : ["qos198"],
+          "base_default_next" : "MyIngress.get_quantum_table",
+          "next_tables" : {
+            "qos198" : "MyIngress.get_quantum_table"
+          },
+          "default_entry" : {
+            "action_id" : 11,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.get_quantum_table",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 196,
+            "column" : 10,
+            "source_fragment" : "get_quantum_table"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.srcAddr[15:0]",
+              "target" : ["scalars", "key_1"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 10,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [9, 2],
+          "actions" : ["MyIngress.get_wrr_quantum", "NoAction"],
+          "base_default_next" : "MyIngress.lookup_flow_id",
+          "next_tables" : {
+            "MyIngress.get_wrr_quantum" : "MyIngress.lookup_flow_id",
+            "NoAction" : "MyIngress.lookup_flow_id"
+          },
+          "default_entry" : {
+            "action_id" : 2,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "MyIngress.lookup_flow_id",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "qos.p4",
+            "line" : 208,
             "column" : 10,
             "source_fragment" : "lookup_flow_id"
           },
@@ -819,15 +1158,15 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [5, 1],
+          "action_ids" : [7, 3],
           "actions" : ["MyIngress.assign_flow_id", "NoAction"],
-          "base_default_next" : "node_4",
+          "base_default_next" : "node_7",
           "next_tables" : {
-            "MyIngress.assign_flow_id" : "node_4",
-            "NoAction" : "node_4"
+            "MyIngress.assign_flow_id" : "node_7",
+            "NoAction" : "node_7"
           },
           "default_entry" : {
-            "action_id" : 1,
+            "action_id" : 3,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -835,10 +1174,10 @@
         },
         {
           "name" : "tbl_drop",
-          "id" : 2,
+          "id" : 5,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 183,
+            "line" : 231,
             "column" : 12,
             "source_fragment" : "drop()"
           },
@@ -849,25 +1188,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [3],
+          "action_ids" : [5],
           "actions" : ["MyIngress.drop"],
-          "base_default_next" : "node_7",
+          "base_default_next" : "node_10",
           "next_tables" : {
-            "MyIngress.drop" : "node_7"
+            "MyIngress.drop" : "node_10"
           },
           "default_entry" : {
-            "action_id" : 3,
+            "action_id" : 5,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_qos188",
-          "id" : 3,
+          "name" : "tbl_qos236",
+          "id" : 6,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 188,
+            "line" : 236,
             "column" : 8,
             "source_fragment" : "register_last_ptr.read(in_pkt_ptr,0); ..."
           },
@@ -878,14 +1217,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [7],
-          "actions" : ["qos188"],
-          "base_default_next" : "node_7",
+          "action_ids" : [12],
+          "actions" : ["qos236"],
+          "base_default_next" : "node_10",
           "next_tables" : {
-            "qos188" : "node_7"
+            "qos236" : "node_10"
           },
           "default_entry" : {
-            "action_id" : 7,
+            "action_id" : 12,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -893,10 +1232,10 @@
         },
         {
           "name" : "MyIngress.ipv4_lpm",
-          "id" : 4,
+          "id" : 7,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 123,
+            "line" : 125,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -914,7 +1253,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [4, 2, 0],
+          "action_ids" : [6, 4, 0],
           "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
@@ -933,11 +1272,11 @@
       "action_profiles" : [],
       "conditionals" : [
         {
-          "name" : "node_4",
+          "name" : "node_7",
           "id" : 0,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 181,
+            "line" : 229,
             "column" : 11,
             "source_fragment" : "(hdr.ipv4.dstAddr == 0)||(in_flow_id == 0)"
           },
@@ -976,14 +1315,14 @@
             }
           },
           "true_next" : "tbl_drop",
-          "false_next" : "tbl_qos188"
+          "false_next" : "tbl_qos236"
         },
         {
-          "name" : "node_7",
+          "name" : "node_10",
           "id" : 1,
           "source_info" : {
             "filename" : "qos.p4",
-            "line" : 204,
+            "line" : 252,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
@@ -1008,7 +1347,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 214,
+        "line" : 262,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -1024,7 +1363,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "qos.p4",
-        "line" : 226,
+        "line" : 274,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },

@@ -132,6 +132,70 @@ class SwitchConnection(object):
             for response in self.client_stub.Read(request):
                 yield response
 
+    def ReadRegisters(self, register_name=None, index=None, thrift_port=9090, dry_run=False):
+        """Read register values using Thrift API
+        
+        Note: P4Runtime does NOT support register reads in BMv2.
+        This method uses Thrift API internally, but provides a similar interface to ReadCounters.
+        
+        Args:
+            register_name: Name of the register (required)
+            index: Index of the register entry (optional, reads all if None)
+            thrift_port: Thrift port (default: 9090)
+            dry_run: If True, only print the request without executing
+        
+        Yields:
+            Register values as integers
+        """
+        if register_name is None:
+            raise ValueError("register_name is required for ReadRegisters")
+        
+        if dry_run:
+            print(f"Thrift Read Register: {register_name}[{index if index is not None else 'all'}]")
+            return
+        
+        try:
+            # Import Thrift modules
+            import sys
+            import os
+            # Try to find BMv2 Thrift API
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(script_dir))
+            bm_runtime_path = os.path.join(project_root, "behavioral-model", "tools")
+            if bm_runtime_path not in sys.path:
+                sys.path.insert(0, bm_runtime_path)
+            sys.path.insert(0, os.path.join(bm_runtime_path, "bm_runtime"))
+            
+            from bm_runtime.standard import Standard
+            from thrift.transport import TTransport
+            from thrift.transport import TSocket
+            from thrift.protocol import TBinaryProtocol
+            from thrift.protocol import TMultiplexedProtocol
+            
+            # Connect to switch via Thrift with multiplexed protocol
+            transport = TSocket.TSocket('localhost', thrift_port)
+            transport = TTransport.TBufferedTransport(transport)
+            protocol = TMultiplexedProtocol.TMultiplexedProtocol(
+                TBinaryProtocol.TBinaryProtocol(transport), "Standard")
+            client = Standard.Client(protocol)
+            
+            transport.open()
+            try:
+                if index is not None:
+                    # Read single register entry
+                    value = client.bm_register_read(0, register_name, index)
+                    yield value
+                else:
+                    # Read all register entries
+                    values = client.bm_register_read_all(0, register_name)
+                    for value in values:
+                        yield value
+            finally:
+                transport.close()
+        except ImportError as e:
+            raise RuntimeError(f"Thrift API not available: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to read register via Thrift: {e}")
 
     def WritePREEntry(self, pre_entry, dry_run=False):
         request = p4runtime_pb2.WriteRequest()

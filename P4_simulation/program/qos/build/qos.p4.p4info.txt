@@ -26,6 +26,46 @@ tables {
 }
 tables {
   preamble {
+    id: 41602002
+    name: "MyIngress.set_quantum_table"
+    alias: "set_quantum_table"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.srcAddr[15:0]"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 28070649
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 10
+}
+tables {
+  preamble {
+    id: 48003205
+    name: "MyIngress.get_quantum_table"
+    alias: "get_quantum_table"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.srcAddr[15:0]"
+    bitwidth: 16
+    match_type: EXACT
+  }
+  action_refs {
+    id: 20293695
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 10
+}
+tables {
+  preamble {
     id: 36752934
     name: "MyIngress.lookup_flow_id"
     alias: "lookup_flow_id"
@@ -88,6 +128,40 @@ actions {
     bitwidth: 48
   }
 }
+actions {
+  preamble {
+    id: 28070649
+    name: "MyIngress.set_wrr_quantum"
+    alias: "set_wrr_quantum"
+  }
+  params {
+    id: 1
+    name: "queue_idx"
+    bitwidth: 48
+  }
+  params {
+    id: 2
+    name: "quantum_value"
+    bitwidth: 48
+  }
+  params {
+    id: 3
+    name: "reset_quota"
+    bitwidth: 1
+  }
+}
+actions {
+  preamble {
+    id: 20293695
+    name: "MyIngress.get_wrr_quantum"
+    alias: "get_wrr_quantum"
+  }
+  params {
+    id: 1
+    name: "queue_idx"
+    bitwidth: 48
+  }
+}
 registers {
   preamble {
     id: 372836238
@@ -117,6 +191,21 @@ registers {
     }
   }
   size: 1
+}
+registers {
+  preamble {
+    id: 370133577
+    name: "MyIngress.quantum_storage"
+    alias: "quantum_storage"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 3
 }
 type_info {
 }

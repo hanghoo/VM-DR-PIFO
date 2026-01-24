@@ -72,13 +72,22 @@ int hier_scheduler::last_time = 0;
 
 //std::vector<unsigned int> hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
 //std::vector<unsigned int> hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+
+// NOTE: This is the ACTIVE definition that controls WRR weights at runtime.
+// Verified by testing: WRR.cpp definition takes precedence over TM_buffer_WRR.h
+// TM_buffer_WRR.h definition is linked but not used (dynamic library symbols override static ones)
+// To change weights: modify these values, or use set_quantum() method via P4Runtime at runtime
+#ifndef QUANTUMS_DEFINED_IN_WRR_CPP
+#define QUANTUMS_DEFINED_IN_WRR_CPP
 std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
-std::vector<unsigned int> bm::hier_scheduler::quantums = {40000,10000,2000}; // minimal topology: 3 flows
-//std::mutex hier_scheduler::quota_mutex;  // add by hang
+std::vector<unsigned int> bm::hier_scheduler::quantums = {40000,10000,2000}; // minimal topology: 3 flows (20:5:1 ratio)
+#endif
+std::mutex bm::hier_scheduler::quota_mutex;  // Mutex for thread-safe quantum updates
 BM_REGISTER_EXTERN(hier_scheduler)
 BM_REGISTER_EXTERN_METHOD(hier_scheduler, my_scheduler, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&, const Data&);
 
-//BM_REGISTER_EXTERN_METHOD(hier_scheduler, set_quantum, const Data&, const Data&, const Data&);  // add by hang
+BM_REGISTER_EXTERN_METHOD(hier_scheduler, set_quantum, const Data&, const Data&, const Data&);
+BM_REGISTER_EXTERN_METHOD(hier_scheduler, get_quantum, const Data&, Data&);
 
 BM_REGISTER_EXTERN_METHOD(hier_scheduler, pass_rank_values, const Data&, const Data&);
 
