@@ -35,20 +35,20 @@ def main():
     parser.add_argument("--h", help="Workload file path (optional, if provided read from file)", type=str, default=None)
     parser.add_argument("--des", help="Destination IP address", type=str, required=True)
     parser.add_argument("--rate", help="Send rate: sleep time between packets (seconds), lower value = higher rate", type=float, default=0.001)
-    
+
     # Fixed rank options
     parser.add_argument("--num-packets", help="Number of packets (if using dynamic generation)", type=int, default=None)
     parser.add_argument("--rank-value", help="Fixed rank value", type=int, default=2000)
-    
+
     # Auto-stop options
     parser.add_argument("--duration", help="Send duration (seconds), 0 means send all packets. Used to create congestion scenarios", type=float, default=0)
     parser.add_argument("--max-packets", help="Maximum packet count limit", type=int, default=None)
-    
+
     # Flow mode
     parser.add_argument("--flow-id", help="Flow ID (for logging)", type=int, default=0)
-    
+
     args = parser.parse_args()
-    
+
     # Determine packet count and rank value
     if args.h:
         # Read from file
@@ -64,17 +64,17 @@ def main():
     else:
         print("Error: Must provide --h (workload file) or --num-packets (packet count)")
         sys.exit(1)
-    
+
     # Set stop conditions
     start_time = time.time()
     max_time = start_time + args.duration if args.duration > 0 else None
     max_packets = args.max_packets if args.max_packets else num_packets
-    
+
     # Initialize network
     addr = socket.gethostbyname(args.des)
     iface = get_if()
     args.m = "P4 is cool"
-    
+
     print(f"Flow {args.flow_id}: Starting to send traffic to {addr}")
     print(f"  Rank value: {rank_value} (fixed)")
     print(f"  Send rate: {args.rate} sec/packet ({1.0/args.rate:.0f} packets/sec)")
@@ -82,20 +82,20 @@ def main():
         print(f"  Duration: {args.duration} seconds (will create congestion scenario)")
     else:
         print(f"  Total packets: {num_packets}")
-    
+
     sent_count = 0
-    
+
     try:
         for i, rank in enumerate(ranks):
             # Check stop conditions
             if sent_count >= max_packets:
                 print(f"Reached maximum packet limit: {max_packets}")
                 break
-            
+
             if max_time and time.time() >= max_time:
                 print(f"Reached time limit: {args.duration} seconds")
                 break
-            
+
             # Construct packet
             rank_bytes = struct.pack('>i', rank)
             pkt = Ether(
@@ -107,22 +107,22 @@ def main():
                 dst=addr,
                 options=IPOption(rank_bytes)
             ) / TCP() / args.m
-            
+
             # Send packet
             sendp(pkt, iface=iface, verbose=False)
             sent_count += 1
-            
+
             # Record send time
             send_time = time.time()
             print(f"This host has sent {sent_count} packets until now : {send_time}")
-            
+
             # Fixed rate sending
             time.sleep(args.rate)
-    
+
     except KeyboardInterrupt:
         print(f"\nInterrupted: sent {sent_count} packets")
         raise
-    
+
     elapsed = time.time() - start_time
     print(f"\nFlow {args.flow_id}: Sending completed")
     print(f"  Total packets: {sent_count}")
