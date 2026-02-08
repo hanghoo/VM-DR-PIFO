@@ -26,8 +26,8 @@ def parse_sender_log(sender_file):
 
         # Parse packet sending timestamps
         for line in lines:
-            # Format: "This host has sent {count} packets until now : {timestamp}"
-            match = re.search(r'has sent (\d+) packets until now : ([\d.]+)', line)
+            # Format: "This host has sent <N> packets until now : <timestamp>" (same regex as analyze_wrr_results)
+            match = re.search(r'sent (\d+) packets until now : ([\d.]+)', line)
             if match:
                 packet_count = int(match.group(1))
                 timestamp = float(match.group(2))

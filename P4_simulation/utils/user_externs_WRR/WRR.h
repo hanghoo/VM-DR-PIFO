@@ -398,8 +398,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 				time_now = 0;
 			}
 
-			//std::this_thread::sleep_for(std::chrono::microseconds(810));  // equivalent to 1ms (with adding the overhead of the code)
-			std::this_thread::sleep_for(std::chrono::milliseconds(30));  // equivalent to 1ms (with adding the overhead of the code)
+			//std::this_thread::sleep_for(std::chrono::microseconds(810));  // 810 equivalent to 1ms (with adding the overhead of the code)
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));  // equivalent to 1ms (with adding the overhead of the code)
 
 			deq_packet_ptr = NULL;
 			bool dequeued_done_right = false;

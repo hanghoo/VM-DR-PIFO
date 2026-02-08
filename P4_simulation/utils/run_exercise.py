@@ -31,7 +31,7 @@ from mininet.cli import CLI
 
 from p4runtime_switch import P4RuntimeSwitch
 import p4runtime_lib.simple_controller
-from run_sim import sending_function
+from run_sim_enhanced import sending_function
 #from run_sim_dummy import sending_function
 #from run_sim_dummy2 import sending_function
 

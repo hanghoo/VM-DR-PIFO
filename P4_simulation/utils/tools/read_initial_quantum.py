@@ -111,7 +111,7 @@ def connect_to_switch(grpc_port=50051, device_id=0):
         paths = get_project_paths()
         logs_dir = paths['logs_dir']
         os.makedirs(logs_dir, exist_ok=True)
-        proto_dump_file = os.path.join(logs_dir, "p4runtime-requests.txt")
+        proto_dump_file = os.path.join(logs_dir, "s1-p4runtime-requests.txt")
 
         sw = bmv2.Bmv2SwitchConnection(
             name='s1',

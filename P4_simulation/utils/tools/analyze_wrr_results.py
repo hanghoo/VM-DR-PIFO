@@ -69,94 +69,48 @@ def parse_sender_log(sender_file):
 
 def calculate_latency(send_times, recv_times, window_start, window_end):
     """
-    Calculate latency for packets received in the time window
-    Uses time-based matching: for each received packet, find the closest sent packet
-    that was sent before it (within reasonable time window)
+    Calculate latency for packets received in the time window.
+    Uses seq_num matching: recv_idx (0-based) corresponds to packet seq_num = recv_idx+1.
+    Lookup send_time by seq_num, so works with sparse logs (log_every > 1).
     """
     latencies = []
 
-    # Filter received packets in window and get their indices in the full list
-    recv_in_window = []
-    for idx, recv_time in enumerate(recv_times):
-        if window_start <= recv_time <= window_end:
-            recv_in_window.append((idx, recv_time))
+    # Build seq_num -> send_time map (adaptive to log_every: sparse or dense)
+    send_time_by_seq = {seq_num: t for seq_num, t in send_times}
 
-    # Create a list of available send times (not yet matched)
-    # Use a set to track which send packets have been matched
-    matched_send_indices = set()
-
-    # For each received packet, find the best matching sent packet
-    for recv_idx, recv_time in recv_in_window:
-        best_match = None
-        best_latency = float('inf')
-        best_send_idx = None
-
-        # Try to match with sent packets
-        # First layer: exact index match (i-th received packet <-> i-th sent packet)
-        if recv_idx < len(send_times) and recv_idx not in matched_send_indices:
-            seq_num, send_time = send_times[recv_idx]
-            latency_ms = (recv_time - send_time) * 1000
-            if 0 <= latency_ms < MAX_LATENCY_MS:
-                best_match = latency_ms
-                best_send_idx = recv_idx
-
-        # # Second layer: local search ±200 (commented out; only first layer used)
-        # search_start = max(0, recv_idx - 200)
-        # search_end = min(len(send_times), recv_idx + 200)
-        # for send_idx in range(search_start, search_end):
-        #     if send_idx in matched_send_indices:
-        #         continue
-        #     seq_num, send_time = send_times[send_idx]
-        #     latency_ms = (recv_time - send_time) * 1000
-        #     if 0 <= latency_ms < MAX_LATENCY_MS:
-        #         index_diff = abs(send_idx - recv_idx)
-        #         score = latency_ms + index_diff * 0.1
-        #         if score < best_latency:
-        #             best_latency = score
-        #             best_match = latency_ms
-        #             best_send_idx = send_idx
-
-        # # Third layer: global search (commented out; only first layer used)
-        # if best_match is None:
-        #     for send_idx in range(len(send_times)):
-        #         if send_idx in matched_send_indices:
-        #             continue
-        #         seq_num, send_time = send_times[send_idx]
-        #         latency_ms = (recv_time - send_time) * 1000
-        #         if 0 <= latency_ms < MAX_LATENCY_MS:
-        #             index_diff = abs(send_idx - recv_idx)
-        #             score = latency_ms + index_diff * 0.1
-        #             if score < best_latency:
-        #                 best_latency = score
-        #                 best_match = latency_ms
-        #                 best_send_idx = send_idx
-
-        # If we found a match, use it and mark the sent packet as matched
-        if best_match is not None and best_send_idx is not None:
-            latencies.append(best_match)
-            matched_send_indices.add(best_send_idx)
+    for recv_idx, recv_time in enumerate(recv_times):
+        if not (window_start <= recv_time <= window_end):
+            continue
+        packet_seq = recv_idx + 1  # 1-based packet number
+        if packet_seq not in send_time_by_seq:
+            continue
+        send_time = send_time_by_seq[packet_seq]
+        latency_ms = (recv_time - send_time) * 1000
+        if 0 <= latency_ms < MAX_LATENCY_MS:
+            latencies.append(latency_ms)
 
     return latencies
 
 
 def diagnose_latency_failures(flow_id, send_times, recv_times):
     """
-    For first-layer (exact index) matching only: find which received packets
-    failed to get a latency and why. Returns a list of dicts:
-      {'recv_idx', 'recv_time', 'send_time' or None, 'latency_ms' or None, 'reason'}
+    Find which received packets failed to get a latency and why (seq_num matching).
+    Returns a list of dicts: {'recv_idx', 'recv_time', 'send_time' or None, 'latency_ms' or None, 'reason'}
     """
+    send_time_by_seq = {seq_num: t for seq_num, t in send_times}
     failures = []
     for recv_idx, recv_time in enumerate(recv_times):
-        if recv_idx >= len(send_times):
+        packet_seq = recv_idx + 1
+        if packet_seq not in send_time_by_seq:
             failures.append({
                 'recv_idx': recv_idx,
                 'recv_time': recv_time,
                 'send_time': None,
                 'latency_ms': None,
-                'reason': 'recv_idx >= len(send_times) (no sent packet at this index)'
+                'reason': f'no_send_timestamp (packet {packet_seq} not in sender log; log_every may omit it)'
             })
             continue
-        seq_num, send_time = send_times[recv_idx]
+        send_time = send_time_by_seq[packet_seq]
         latency_ms = (recv_time - send_time) * 1000
         if latency_ms < 0:
             failures.append({
@@ -403,18 +357,27 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
     flows_with_gap = [f for f in range(3) if total_packets_all[f] > len(overall_latencies[f])]
     if flows_with_gap:
         print("\n" + "=" * 60)
-        print("Unmatched packet diagnosis (first-layer exact index match):")
+        print("Unmatched packet diagnosis (seq_num matching):")
         print("=" * 60)
         for flow_id in flows_with_gap:
             send_times = flow_send_times[flow_id]
             recv_times = flow_recv_times[flow_id]
             failures = diagnose_latency_failures(flow_id, send_times, recv_times)
-            print(f"\n  Flow {flow_id}: {len(failures)} packet(s) failed to get latency")
-            for i, fail in enumerate(failures):
-                print(f"    [{i+1}] recv_idx={fail['recv_idx']}, recv_time={fail['recv_time']:.6f}")
-                if fail['send_time'] is not None:
-                    print(f"        send_time={fail['send_time']:.6f}, latency_ms={fail['latency_ms']:.2f}")
-                print(f"        reason: {fail['reason']}")
+            latency_count = len(overall_latencies[flow_id])
+            # When sender log is sparse (log_every > 1), most failures are no_send_timestamp; print summary only
+            no_ts_count = sum(1 for f in failures if 'no_send_timestamp' in f.get('reason', ''))
+            if len(failures) > 20 and no_ts_count == len(failures):
+                print(f"\n  Flow {flow_id}: {len(failures)} packets have no send timestamp (expected with log_every > 1)")
+                print(f"    Latency computed for {latency_count} packets (those with send timestamps)")
+            else:
+                print(f"\n  Flow {flow_id}: {len(failures)} packet(s) failed to get latency")
+                for i, fail in enumerate(failures[:50]):  # limit to first 50
+                    print(f"    [{i+1}] recv_idx={fail['recv_idx']}, recv_time={fail['recv_time']:.6f}")
+                    if fail['send_time'] is not None:
+                        print(f"        send_time={fail['send_time']:.6f}, latency_ms={fail['latency_ms']:.2f}")
+                    print(f"        reason: {fail['reason']}")
+                if len(failures) > 50:
+                    print(f"    ... and {len(failures) - 50} more")
 
 
 def main():
