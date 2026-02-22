@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Copyright 2017-present Open Networking Foundation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from queue import Queue
 from abc import abstractmethod
 from datetime import datetime
+from queue import Queue
+import threading
 
 import grpc
-from p4.v1 import p4runtime_pb2
-from p4.v1 import p4runtime_pb2_grpc
 from p4.tmp import p4config_pb2
+from p4.v1 import p4runtime_pb2, p4runtime_pb2_grpc
 
 MSG_LOG_MAX_LEN = 1024
 
@@ -30,6 +31,37 @@ def ShutdownAllSwitchConnections():
     for c in connections:
         c.shutdown()
 
+class StreamDispatcher:
+    def __init__(self, stream):
+        self.stream = stream
+        self.running = True
+        # Queues for each message type
+        self.arbitration_queue = Queue()
+        self.packet_in_queue = Queue()
+        self.timeout_queue = Queue()
+        self.error_queue = Queue()
+
+        self.thread = threading.Thread(target=self._dispatch_loop, daemon=True)
+        self.thread.start()
+
+    def _dispatch_loop(self):
+        for msg in self.stream:
+            if not self.running:
+                break
+            if msg.HasField("arbitration"):
+                self.arbitration_queue.put(msg.arbitration)
+            elif msg.HasField("packet"):
+                self.packet_in_queue.put(msg.packet)
+            elif msg.HasField("idle_timeout_notification"):
+                self.timeout_queue.put(msg.idle_timeout_notification)
+            elif msg.HasField("error"):
+                self.error_queue.put(msg.error)
+            else:
+                print("Unknown StreamMessageResponse:", msg)
+
+    def stop(self):
+        self.running = False
+        
 class SwitchConnection(object):
 
     def __init__(self, name=None, address='127.0.0.1:50051', device_id=0,
@@ -45,6 +77,7 @@ class SwitchConnection(object):
         self.client_stub = p4runtime_pb2_grpc.P4RuntimeStub(self.channel)
         self.requests_stream = IterableQueue()
         self.stream_msg_resp = self.client_stub.StreamChannel(iter(self.requests_stream))
+        self.dispatcher = StreamDispatcher(self.stream_msg_resp)
         self.proto_dump_file = proto_dump_file
         connections.append(self)
 
@@ -54,7 +87,7 @@ class SwitchConnection(object):
 
     def shutdown(self):
         self.requests_stream.close()
-        self.stream_msg_resp.cancel()
+        self.dispatcher.stop() 
 
     def MasterArbitrationUpdate(self, dry_run=False, **kwargs):
         request = p4runtime_pb2.StreamMessageRequest()
@@ -63,11 +96,10 @@ class SwitchConnection(object):
         request.arbitration.election_id.low = 1
 
         if dry_run:
-            print ("P4Runtime MasterArbitrationUpdate: ", request)  # add () by hang
+            print("P4Runtime MasterArbitrationUpdate: ", request)
         else:
             self.requests_stream.put(request)
-            for item in self.stream_msg_resp:
-                return item # just one
+            return self.dispatcher.arbitration_queue.get()
 
     def SetForwardingPipelineConfig(self, p4info, dry_run=False, **kwargs):
         device_config = self.buildDeviceConfig(**kwargs)
@@ -81,7 +113,7 @@ class SwitchConnection(object):
 
         request.action = p4runtime_pb2.SetForwardingPipelineConfigRequest.VERIFY_AND_COMMIT
         if dry_run:
-            print ("P4Runtime SetForwardingPipelineConfig:", request)  # add () by hang
+            print("P4Runtime SetForwardingPipelineConfig:", request)
         else:
             self.client_stub.SetForwardingPipelineConfig(request)
 
@@ -96,10 +128,10 @@ class SwitchConnection(object):
             update.type = p4runtime_pb2.Update.INSERT
         update.entity.table_entry.CopyFrom(table_entry)
         if dry_run:
-            print ("P4Runtime Write:", request)  # add () by hang
+            print("P4Runtime Write:", request)
         else:
             self.client_stub.Write(request)
-    
+
     # Modify
     def ModifyTableEntry(self, table_entry, dry_run=False):
         request = p4runtime_pb2.WriteRequest()
@@ -114,17 +146,15 @@ class SwitchConnection(object):
         else:
             self.client_stub.Write(request)
 
-    # Delete
     def DeleteTableEntry(self, table_entry, dry_run=False):
         request = p4runtime_pb2.WriteRequest()
         request.device_id = self.device_id
         request.election_id.low = 1
         update = request.updates.add()
-        # Assign DELETE Type for it
         update.type = p4runtime_pb2.Update.DELETE
         update.entity.table_entry.CopyFrom(table_entry)
         if dry_run:
-            print("P4Runtime Delete: ", request)
+            print("P4Runtime Write:", request)
         else:
             self.client_stub.Write(request)
 
@@ -138,7 +168,7 @@ class SwitchConnection(object):
         else:
             table_entry.table_id = 0
         if dry_run:
-            print ("P4Runtime Read:", request)  # add () by hang
+            print("P4Runtime Read:", request)
         else:
             for response in self.client_stub.Read(request):
                 yield response
@@ -155,75 +185,10 @@ class SwitchConnection(object):
         if index is not None:
             counter_entry.index.index = index
         if dry_run:
-            print ("P4Runtime Read:", request)  # add () by hang
+            print("P4Runtime Read:", request)
         else:
             for response in self.client_stub.Read(request):
                 yield response
-
-    def ReadRegisters(self, register_name=None, index=None, thrift_port=9090, dry_run=False):
-        """Read register values using Thrift API
-        
-        Note: P4Runtime does NOT support register reads in BMv2.
-        This method uses Thrift API internally, but provides a similar interface to ReadCounters.
-        
-        Args:
-            register_name: Name of the register (required)
-            index: Index of the register entry (optional, reads all if None)
-            thrift_port: Thrift port (default: 9090)
-            dry_run: If True, only print the request without executing
-        
-        Yields:
-            Register values as integers
-        """
-        if register_name is None:
-            raise ValueError("register_name is required for ReadRegisters")
-        
-        if dry_run:
-            print(f"Thrift Read Register: {register_name}[{index if index is not None else 'all'}]")
-            return
-        
-        try:
-            # Import Thrift modules
-            import sys
-            import os
-            # Try to find BMv2 Thrift API
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(os.path.dirname(script_dir))
-            bm_runtime_path = os.path.join(project_root, "behavioral-model", "tools")
-            if bm_runtime_path not in sys.path:
-                sys.path.insert(0, bm_runtime_path)
-            sys.path.insert(0, os.path.join(bm_runtime_path, "bm_runtime"))
-            
-            from bm_runtime.standard import Standard
-            from thrift.transport import TTransport
-            from thrift.transport import TSocket
-            from thrift.protocol import TBinaryProtocol
-            from thrift.protocol import TMultiplexedProtocol
-            
-            # Connect to switch via Thrift with multiplexed protocol
-            transport = TSocket.TSocket('localhost', thrift_port)
-            transport = TTransport.TBufferedTransport(transport)
-            protocol = TMultiplexedProtocol.TMultiplexedProtocol(
-                TBinaryProtocol.TBinaryProtocol(transport), "Standard")
-            client = Standard.Client(protocol)
-            
-            transport.open()
-            try:
-                if index is not None:
-                    # Read single register entry
-                    value = client.bm_register_read(0, register_name, index)
-                    yield value
-                else:
-                    # Read all register entries
-                    values = client.bm_register_read_all(0, register_name)
-                    for value in values:
-                        yield value
-            finally:
-                transport.close()
-        except ImportError as e:
-            raise RuntimeError(f"Thrift API not available: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Failed to read register via Thrift: {e}")
 
     def WritePREEntry(self, pre_entry, dry_run=False):
         request = p4runtime_pb2.WriteRequest()
@@ -233,10 +198,41 @@ class SwitchConnection(object):
         update.type = p4runtime_pb2.Update.INSERT
         update.entity.packet_replication_engine_entry.CopyFrom(pre_entry)
         if dry_run:
-            print ("P4Runtime Write:", request)  # add () by hang
+            print("P4Runtime Write:", request)
         else:
             self.client_stub.Write(request)
 
+    def PacketIn(self, dry_run=False):
+        request = self.dispatcher.packet_in_queue.get()
+        if dry_run:
+            print("P4 Runtime PacketIn: ", request)
+        else:
+            return request
+
+    def PacketOut(self, payload, metadatas):
+        packet_out = p4runtime_pb2.PacketOut()
+        packet_out.payload = payload
+
+        metadata_list = []
+        i = 1
+        for meta in metadatas:
+            item = p4runtime_pb2.PacketMetadata()
+            item.metadata_id = i
+            item.value = meta["value"].to_bytes(meta["bitwidth"], 'big')
+            metadata_list.append(item)
+            i +=1
+        packet_out.metadata.extend(metadata_list)
+
+        request = p4runtime_pb2.StreamMessageRequest()
+        request.packet.CopyFrom(packet_out)
+        self.requests_stream.put(request)
+
+    def IdleTimeoutNotification(self, dry_run=False):
+        msg = self.dispatcher.timeout_queue.get()
+        if dry_run:
+            print("P4 Runtime PacketIn: ", msg)
+        else:
+            return msg
 class GrpcRequestLogger(grpc.UnaryUnaryClientInterceptor,
                         grpc.UnaryStreamClientInterceptor):
     """Implementation of a gRPC interceptor that logs request to a file"""
