@@ -131,13 +131,13 @@ def diagnose_latency_failures(flow_id, send_times, recv_times):
     return failures
 
 
-def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size=10, start_offset=0):
+def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size=10, start_offset=0, num_flows=2):
     """
     Unified analysis of WRR bandwidth allocation and latency.
 
-    Expects in outputs_dir:
-      - receiver_h_r1.txt, receiver_h_r2.txt, receiver_h_r3.txt  (receiver logs)
-      - sender_h1.txt, sender_h2.txt, sender_h3.txt             (sender logs)
+    Expects in outputs_dir (num_flows=2 by default):
+      - receiver_h_r1.txt ... receiver_h_rN.txt  (receiver logs)
+      - sender_h1.txt ... sender_hN.txt          (sender logs)
 
     Receiver log: only packets with load = 'P4 is cool' are counted (ICMPv6 etc. excluded).
     Receiver block format: "packet is received at time : <timestamp>" then later "load = 'P4 is cool'"
@@ -155,11 +155,13 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
         print(f"Error: outputs_dir is not a directory: {outputs_path}")
         return
 
+    flow_ids = range(num_flows)
+
     # Parse logs for each flow
     flow_recv_times = {}
     flow_send_times = {}
 
-    for flow_id in range(3):
+    for flow_id in flow_ids:
         receiver_file = outputs_path / f"receiver_h_r{flow_id+1}.txt"
         sender_file = outputs_path / f"sender_h{flow_id+1}.txt"
 
@@ -228,7 +230,7 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
         total_packets = 0
         total_rate = 0.0
 
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             recv_times = flow_recv_times[flow_id]
             send_times = flow_send_times[flow_id]
 
@@ -263,13 +265,13 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
         if total_rate > 0:
             print(f"\n  Total: {total_packets} packets, {total_rate:.2f} pps")
             print("  Bandwidth allocation:")
-            for flow_id in range(3):
+            for flow_id in flow_ids:
                 percentage = (window_stats[flow_id]['rate'] / total_rate) * 100
                 print(f"    Flow {flow_id}: {percentage:.2f}%")
 
         # Print latency statistics
         print("\n  Latency Statistics:")
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             latencies = window_stats[flow_id]['latencies']
             if latencies:
                 print(f"    Flow {flow_id}:")
@@ -299,22 +301,22 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
     print("=" * 60)
 
     # Combine all latencies
-    overall_latencies = {0: [], 1: [], 2: []}
-    total_packets_all = {0: 0, 1: 0, 2: 0}
+    overall_latencies = {flow_id: [] for flow_id in flow_ids}
+    total_packets_all = {flow_id: 0 for flow_id in flow_ids}
 
     for window_stats in all_window_stats:
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             overall_latencies[flow_id].extend(window_stats[flow_id]['latencies'])
             total_packets_all[flow_id] += window_stats[flow_id]['packets']
 
     print("\nBandwidth Allocation (all windows):")
     total_all = sum(total_packets_all.values())
-    for flow_id in range(3):
+    for flow_id in flow_ids:
         percentage = (total_packets_all[flow_id] / total_all * 100) if total_all > 0 else 0
         print(f"  Flow {flow_id}: {total_packets_all[flow_id]} packets ({percentage:.2f}%)")
 
     print("\nLatency Statistics (all windows combined):")
-    for flow_id in range(3):
+    for flow_id in flow_ids:
         latencies = overall_latencies[flow_id]
         if latencies:
             print(f"\n  Flow {flow_id}:")
@@ -337,7 +339,7 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
     print("\n" + "=" * 60)
     print("Consistency Check:")
     print("=" * 60)
-    for flow_id in range(3):
+    for flow_id in flow_ids:
         bandwidth_packets = total_packets_all[flow_id]
         latency_packets = len(overall_latencies[flow_id])
         diff = bandwidth_packets - latency_packets
@@ -354,7 +356,7 @@ def analyze_wrr_results(outputs_dir, start_time=None, end_time=None, window_size
             print(f"    ⚠️  Warning: {abs(diff)} more latency samples than received packets")
 
     # Diagnose unmatched packets for flows where bandwidth > latency count
-    flows_with_gap = [f for f in range(3) if total_packets_all[f] > len(overall_latencies[f])]
+    flows_with_gap = [f for f in flow_ids if total_packets_all[f] > len(overall_latencies[f])]
     if flows_with_gap:
         print("\n" + "=" * 60)
         print("Unmatched packet diagnosis (seq_num matching):")
@@ -396,6 +398,8 @@ def main():
                        help="Time window size in seconds (default: 10)")
     parser.add_argument("--start-offset", type=float, default=0,
                        help="Offset in seconds from first packet time (default: 0, start from first packet)")
+    parser.add_argument("--num-flows", type=int, default=2,
+                       help="Number of sender/receiver flows to analyze (default: 2)")
 
     args = parser.parse_args()
 
@@ -404,7 +408,8 @@ def main():
         args.start_time,
         args.end_time,
         args.window_size,
-        args.start_offset
+        args.start_offset,
+        args.num_flows
     )
 
 

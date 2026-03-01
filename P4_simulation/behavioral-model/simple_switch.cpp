@@ -39,13 +39,13 @@
 #include "register_access.h"
 #include "semaphore_TM.h"
 
-#include "TM_buffer_dr_pifo.h"
+//#include "TM_buffer_dr_pifo.h"
 //#include "TM_buffer_pFabric.h"
 //#include "TM_buffer_pifo.h"
 //#include "TM_buffer_pieo.h"
 //#include "TM_buffer_dr_pifo_hier.h"
 //#include "TM_buffer_DRR.h"
-//#include "TM_buffer_WRR.h"
+#include "TM_buffer_WRR.h"
 //#include "TM_buffer_WDRR.h"
 //#include "TM_buffer_RL_SP_NWC.h"
 
@@ -699,8 +699,11 @@ if(TM_buffer_obj.valid_pop(packet) == 1) // added line
           phv->get_field("queueing_metadata.enq_timestamp").get<ts_res::rep>();
       phv->get_field("queueing_metadata.deq_timedelta").set(
           get_ts().count() - enq_timestamp);
-      phv->get_field("queueing_metadata.deq_qdepth").set(
-          egress_buffers.size(port));
+      // Total queue depth = egress_buffers + TM_buffer + output_buffer (all stages before wire)
+      size_t egress_port = packet->get_egress_port();
+      unsigned int tm_depth = egress_buffers.size(egress_port) + TM_buffer_obj.get_buffer_depth()
+          + output_buffer.size() + 1u;
+      phv->get_field("queueing_metadata.deq_qdepth").set(tm_depth);
       if (phv->has_field("queueing_metadata.qid")) {
         auto &qid_f = phv->get_field("queueing_metadata.qid");
 #ifdef SSWITCH_PRIORITY_QUEUEING_ON

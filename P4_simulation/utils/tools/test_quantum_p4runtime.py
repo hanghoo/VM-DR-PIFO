@@ -9,7 +9,7 @@ Features:
 4. Send packets to trigger get_quantum(), then read updated values from register
 
 Usage:
-    sudo python3 test_quantum_p4runtime.py [--grpc-port 50051] [--device-id 0]
+    sudo python3 test_quantum_p4runtime.py [--grpc-port 50051] [--device-id 0] [--num-flows 2]
 
 Note: sudo is required to send raw packets for triggering get_quantum().
 """
@@ -160,11 +160,11 @@ def read_register(sw, p4info_helper, register_name, index, thrift_port=9090, met
     return read_register_via_thrift(thrift_port, register_name, index), "thrift"
 
 
-def setup_get_quantum_table(sw, p4info_helper):
-    """Setup get_quantum_table entries for all queues."""
+def setup_get_quantum_table(sw, p4info_helper, num_flows=2):
+    """Setup get_quantum_table entries for active queues."""
     print("  Setting up get_quantum_table entries...")
     ok = 0
-    for queue_idx in range(3):
+    for queue_idx in range(num_flows):
         try:
             table = p4info_helper.get("tables", name="get_quantum_table")
             if not table.match_fields:
@@ -187,7 +187,7 @@ def setup_get_quantum_table(sw, p4info_helper):
             ok += 1
         except Exception as e:
             print(f"    ✗ get_quantum table queue {queue_idx}: {e}")
-    return ok == 3
+    return ok == num_flows
 
 
 def find_interface():
@@ -305,8 +305,18 @@ def set_quantum_via_table(sw, p4info_helper, queue_idx, quantum_value, reset_quo
         action_param3.param_id = param_map["reset_quota"]
         action_param3.value = encode(1 if reset_quota else 0, 1)  # bit<1>
 
-        sw.WriteTableEntry(table_entry)
-        print(f"✓ Set quantum for queue {queue_idx} to {quantum_value} (reset_quota={reset_quota})")
+        # Runtime update path: try MODIFY first (existing key), then fallback to INSERT.
+        # This avoids ALREADY_EXISTS during repeated online updates.
+        try:
+            sw.ModifyTableEntry(table_entry)
+            print(f"✓ Modified quantum for queue {queue_idx} to {quantum_value} (reset_quota={reset_quota})")
+        except Exception as e:
+            msg = str(e).upper()
+            if "NOT_FOUND" in msg or "UNKNOWN" in msg:
+                sw.WriteTableEntry(table_entry)
+                print(f"✓ Inserted quantum for queue {queue_idx} to {quantum_value} (reset_quota={reset_quota})")
+            else:
+                raise
         return True
     except Exception as e:
         print(f"✗ Failed to set quantum: {e}")
@@ -316,7 +326,7 @@ def set_quantum_via_table(sw, p4info_helper, queue_idx, quantum_value, reset_quo
 
 
 def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2_json_path=None,
-                            thrift_port=9090, interface=None):
+                            thrift_port=9090, interface=None, num_flows=2):
     """Test quantum operations: read initial -> set new -> send packets -> read updated."""
 
     paths = get_project_paths()
@@ -353,13 +363,13 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
         print("Step 1: Read initial quantum values")
         print("-" * 70)
 
-        setup_get_quantum_table(sw, p4info_helper)
+        setup_get_quantum_table(sw, p4info_helper, num_flows=num_flows)
         iface = interface or find_interface()
-        initial_quantums = {0: None, 1: None, 2: None}
+        initial_quantums = {q: None for q in range(num_flows)}
 
         if iface:
             print("  Sending packets to trigger get_quantum()...")
-            for q in range(3):
+            for q in range(num_flows):
                 if send_packet_to_trigger_get_quantum(q, iface):
                     time.sleep(0.15)
             time.sleep(1.0)
@@ -367,7 +377,7 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
             print("  ⚠ No interface for packets; register read may fail.")
 
         print("  Reading quantum_storage register (CLI then Thrift)...")
-        for q in range(3):
+        for q in range(num_flows):
             value, method = read_register(sw, p4info_helper, "quantum_storage", q, thrift_port=thrift_port)
             if value is not None and value != 0:
                 initial_quantums[q] = value
@@ -381,7 +391,10 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
         print("Step 2: Modify quantums via P4Runtime (set_quantum_table)")
         print("-" * 70)
 
-        new_quantums = {0: 50000, 1: 15000, 2: 3000}
+        preset_quantums = [50000, 15000, 3000]
+        if num_flows > len(preset_quantums):
+            raise ValueError(f"num_flows={num_flows} exceeds supported preset quantums ({len(preset_quantums)})")
+        new_quantums = {q: preset_quantums[q] for q in range(num_flows)}
         for q, v in new_quantums.items():
             set_quantum_via_table(sw, p4info_helper, q, v, reset_quota=True)
             time.sleep(0.1)
@@ -395,7 +408,7 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
         # P4 applies set_quantum first, then get_quantum, so we set then read in one pass.
         if iface:
             print("  Sending packets (trigger set_quantum, then get_quantum → register)...")
-            for q in range(3):
+            for q in range(num_flows):
                 if send_packet_to_trigger_get_quantum(q, iface):
                     time.sleep(0.15)
             time.sleep(1.0)
@@ -404,7 +417,7 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
 
         print("  Reading quantum_storage register (updated values)...")
         updated_quantums = {}
-        for q in range(3):
+        for q in range(num_flows):
             value, method = read_register(sw, p4info_helper, "quantum_storage", q, thrift_port=thrift_port)
             if value is not None:
                 updated_quantums[q] = value
@@ -447,6 +460,7 @@ Examples:
     parser.add_argument('--p4info', type=str, default=None, help='P4Info file path')
     parser.add_argument('--json', type=str, default=None, help='BMv2 JSON file path')
     parser.add_argument('--interface', type=str, default=None, help='Interface for sending packets')
+    parser.add_argument('--num-flows', type=int, default=2, help='Number of active flows/queues to test (default: 2)')
     args = parser.parse_args()
 
     test_quantum_operations(
@@ -456,6 +470,7 @@ Examples:
         bmv2_json_path=args.json,
         thrift_port=args.thrift_port,
         interface=args.interface,
+        num_flows=args.num_flows,
     )
 
 

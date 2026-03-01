@@ -16,6 +16,7 @@
 #include <utility>
 
 #include <queue>
+#include <atomic>
 
 #include "simple_switch.h"
 #include "register_access.h"
@@ -111,6 +112,8 @@ bm::hier_scheduler dequeue_scheduler; // create object of the bm::hier_scheduler
 		std::shared_ptr<buffer> next;
 	};
 	static std::shared_ptr<buffer> buffer_head;
+	// Atomic count of packets in buffer_head - reliable for deq_qdepth (scheduler-agnostic)
+	static std::atomic<unsigned int> buffer_packet_count;
 
 
 unsigned int valid_pop(std::unique_ptr<Packet>& packet)
@@ -147,6 +150,7 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 			temp_ptr->next = NULL;
 			prev_ptr_buffer->next = temp_ptr;
 		}
+		buffer_packet_count++;
 	}
 ////////////////////// then the pop operation
 	std::shared_ptr<buffer> cur_ptr_buffer;
@@ -199,6 +203,7 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 
 		if(packet != NULL)
 		{
+			if (buffer_packet_count > 0u) buffer_packet_count--;
 			dequeue_scheduler.increment_deq_count();
       		start_dequeue(1);
 			valid_packet = 1;
@@ -230,11 +235,19 @@ unsigned int num_of_read_pkts()
 	return dequeue_scheduler.num_of_read_pkts();
 }
 
+// Returns current packets in buffer_head (scheduler-agnostic, thread-safe)
+unsigned int get_buffer_depth()
+{
+	return buffer_packet_count.load();
+}
+
 void start_dequeue(unsigned int start)
 {
 	dequeue_scheduler.start_dequeue(start);
 }
 
 };
+
+std::atomic<unsigned int> TM_buffer::buffer_packet_count{0};
 
 }

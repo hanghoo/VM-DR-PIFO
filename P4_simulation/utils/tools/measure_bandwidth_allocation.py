@@ -44,11 +44,12 @@ def expected_allocation_from_quantums(quantums):
     """Compute expected WRR allocation percentages from quantum values."""
     total = sum(quantums)
     if total <= 0:
-        return [0.0, 0.0, 0.0]
+        return [0.0 for _ in quantums]
     return [q / total * 100.0 for q in quantums]
 
 
-def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, window_size=10, quantums=None):
+def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, window_size=10, quantums=None, num_flows=2,
+                                 min_active_pps=1.0):
     """
     Measure bandwidth allocation for each flow
 
@@ -57,15 +58,16 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
         start_time: Start time for measurement (if None, use first packet time)
         end_time: End time for measurement (if None, use last packet time)
         window_size: Size of time windows in seconds
-        quantums: List of 3 WRR quantum values (e.g. [20000, 10000, 2000]). If None, use default.
+        quantums: List of WRR quantum values for each flow. If None, use defaults for num_flows.
     """
     if quantums is None:
-        quantums = [20000, 10000, 2000]
+        quantums = [30000, 6000] if num_flows == 2 else [20000 for _ in range(num_flows)]
     outputs_path = Path(outputs_dir)
+    flow_ids = range(num_flows)
 
     # Parse receiver logs for each flow
     flow_timestamps = {}
-    for flow_id in range(3):
+    for flow_id in flow_ids:
         receiver_file = outputs_path / f"receiver_h_r{flow_id+1}.txt"
         timestamps = parse_receiver_log(receiver_file)
         flow_timestamps[flow_id] = timestamps
@@ -93,10 +95,11 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
     print(f"Window size: {window_size} seconds")
     print("=" * 60)
 
-    # Calculate rates for each time window; track steady-state end (last window with all flows active)
+    # Calculate rates for each time window; track steady-state end
+    # "steady" means each flow is active (rate >= min_active_pps)
     current_time = start_time
     window_num = 1
-    steady_state_end = start_time  # end time of last window where all 3 flows had packets
+    steady_state_end = start_time  # end time of last steady window
 
     while current_time < end_time:
         window_end = min(current_time + window_size, end_time)
@@ -108,7 +111,7 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
         total_rate = 0.0
         flow_stats = {}
 
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             timestamps = flow_timestamps[flow_id]
             packet_count, rate = calculate_window_rates(timestamps, current_time, window_end)
             flow_stats[flow_id] = {'packets': packet_count, 'rate': rate}
@@ -117,15 +120,16 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
 
             print(f"  Flow {flow_id}: {packet_count} packets, {rate:.2f} pps")
 
-        # Steady state: all three flows have at least one packet in this window
-        if all(flow_stats[f]['packets'] > 0 for f in range(3)):
+        # Determine if this window should count as steady state
+        is_active_window = all(flow_stats[f]['rate'] >= min_active_pps for f in flow_ids)
+        if is_active_window:
             steady_state_end = window_end
 
         # Calculate percentages
         if total_rate > 0:
             print(f"\n  Total: {total_packets} packets, {total_rate:.2f} pps")
             print("  Bandwidth allocation:")
-            for flow_id in range(3):
+            for flow_id in flow_ids:
                 percentage = (flow_stats[flow_id]['rate'] / total_rate) * 100
                 print(f"    Flow {flow_id}: {percentage:.2f}%")
 
@@ -137,7 +141,7 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
         total_packets_all = 0
         total_rate_all = 0.0
         flow_stats_all = {}
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             timestamps = flow_timestamps[flow_id]
             packet_count, rate = calculate_window_rates(timestamps, stat_start, stat_end)
             flow_stats_all[flow_id] = {'packets': packet_count, 'rate': rate}
@@ -146,18 +150,18 @@ def measure_bandwidth_allocation(outputs_dir, start_time=None, end_time=None, wi
         print(f"\n{title}")
         print(f"Time range: {stat_start:.2f} - {stat_end:.2f} seconds")
         print("-" * 60)
-        for flow_id in range(3):
+        for flow_id in flow_ids:
             print(f"Flow {flow_id}: {flow_stats_all[flow_id]['packets']} packets, {flow_stats_all[flow_id]['rate']:.2f} pps")
         if total_rate_all > 0:
             print(f"\nTotal: {total_packets_all} packets, {total_rate_all:.2f} pps")
             print("Bandwidth allocation:")
-            for flow_id in range(3):
+            for flow_id in flow_ids:
                 actual_pct = (flow_stats_all[flow_id]['rate'] / total_rate_all) * 100
                 print(f"  Flow {flow_id}: {actual_pct:.2f}%")
             expected = expected_allocation_from_quantums(quantums)
             ratio_str = ":".join(str(q) for q in quantums)
             print(f"\nExpected allocation (quantums {ratio_str}):")
-            for flow_id in range(3):
+            for flow_id in flow_ids:
                 actual_pct = (flow_stats_all[flow_id]['rate'] / total_rate_all) * 100
                 diff = abs(actual_pct - expected[flow_id])
                 print(f"  Flow {flow_id}: {expected[flow_id]:.2f}% (actual: {actual_pct:.2f}%, diff: {diff:.2f}%)")
@@ -189,14 +193,18 @@ def main():
                        help="End time for measurement (seconds since epoch)")
     parser.add_argument("--window-size", type=int, default=10,
                        help="Time window size in seconds (default: 10)")
-    parser.add_argument("--quantums", type=str, default="20000,10000,2000",
-                       help="WRR quantums for flow 0,1,2 (comma-separated). Default: 20000,10000,2000")
+    parser.add_argument("--num-flows", type=int, default=2,
+                       help="Number of flows (default: 2)")
+    parser.add_argument("--quantums", type=str, default="30000,6000",
+                       help="WRR quantums per flow (comma-separated). Default: 30000,6000")
+    parser.add_argument("--min-active-pps", type=float, default=1.0,
+                       help="Minimum per-flow pps to consider a flow active for steady-state detection (default: 1.0)")
 
     args = parser.parse_args()
 
     quantums = [int(x.strip()) for x in args.quantums.split(",")]
-    if len(quantums) != 3:
-        parser.error("--quantums must have exactly 3 values (e.g. 20000,10000,2000)")
+    if len(quantums) != args.num_flows:
+        parser.error(f"--quantums must have exactly {args.num_flows} values")
     if any(q <= 0 for q in quantums):
         parser.error("--quantums must be positive")
 
@@ -205,7 +213,9 @@ def main():
         args.start_time,
         args.end_time,
         args.window_size,
-        quantums
+        quantums,
+        args.num_flows,
+        args.min_active_pps
     )
 
 

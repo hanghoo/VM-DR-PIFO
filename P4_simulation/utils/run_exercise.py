@@ -360,7 +360,11 @@ class ExerciseRunner:
             print(' for example run:  cat %s/s1-p4runtime-requests.txt' % self.log_dir)
             print('')
 
-        sending_function(self)
+        # Disable auto traffic generation by default.
+        # Use Mininet CLI manually, e.g.:
+        #   mininet> xterm h1 h2 h_r1 h_r2
+        # and run send/receive scripts in those terminals.
+        print('Auto traffic is disabled. Please start send/receive manually via xterm.')
 
         CLI(self.net)
 

@@ -18,6 +18,8 @@ void floor ( in T1 nom, in T1 dom, inout T1 result);
 
 
 const bit<16> TYPE_IPV4 = 0x800;
+const bit<5>  IPV4_OPTION_MRI = 31;
+const bit<32> MAX_HOPS = 8;
 
 
 /*************************************************************************
@@ -27,6 +29,8 @@ const bit<16> TYPE_IPV4 = 0x800;
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
+typedef bit<32> qdepth_t;
+typedef bit<32> switchID_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -48,7 +52,6 @@ header ipv4_t {
     bit<16>   hdrChecksum;
     ip4Addr_t srcAddr;
     ip4Addr_t dstAddr;
-    bit<32>  options;
 }
 
 header ipv4_option_t {
@@ -58,12 +61,25 @@ header ipv4_option_t {
     bit<8> optionLength;
 }
 
+header mri_t {
+    bit<16> count;
+}
+
+header switch_t {
+    switchID_t swid;
+    qdepth_t   qdepth;
+}
+
 struct metadata {
+    bit<16> remaining;
 }
 
 struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
+    ipv4_option_t ipv4_option;
+    mri_t         mri;
+    switch_t[MAX_HOPS] swtraces;
 }
 
 /*************************************************************************
@@ -89,7 +105,36 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        transition accept;
+        transition select(hdr.ipv4.ihl) {
+            5: accept;
+            default: parse_ipv4_option;
+        }
+    }
+
+    state parse_ipv4_option {
+        packet.extract(hdr.ipv4_option);
+        transition select(hdr.ipv4_option.option) {
+            IPV4_OPTION_MRI: parse_mri;
+            default: accept;
+        }
+    }
+
+    state parse_mri {
+        packet.extract(hdr.mri);
+        meta.remaining = hdr.mri.count;
+        transition select(meta.remaining) {
+            0: accept;
+            default: parse_swtrace;
+        }
+    }
+
+    state parse_swtrace {
+        packet.extract(hdr.swtraces.next);
+        meta.remaining = meta.remaining - 1;
+        transition select(meta.remaining) {
+            0: accept;
+            default: parse_swtrace;
+        }
     }
 }
 
@@ -239,7 +284,7 @@ control MyIngress(inout headers hdr,
 
         reset_time = 0;
 
-	level_0_rank = (bit<48>)(hdr.ipv4.options);
+	level_0_rank = (bit<48>)(hdr.ipv4.identification);
 
    	my_hier.pass_rank_values(level_0_rank,0);
 	//my_hier.pass_rank_values(level_2_rank,2);
@@ -262,7 +307,33 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply {  }
+    action add_swtrace(switchID_t swid) {
+        hdr.mri.count = hdr.mri.count + 1;
+        hdr.swtraces.push_front(1);
+        hdr.swtraces[0].setValid();
+        hdr.swtraces[0].swid = swid;
+        hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth;
+
+        // Extend IPv4 option space by one switch_t (8 bytes)
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
+        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8;
+        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8;
+    }
+
+    table swtrace {
+        actions = {
+            add_swtrace;
+            NoAction;
+        }
+        default_action = NoAction();
+        size = 1;
+    }
+
+    apply {
+        if (hdr.mri.isValid()) {
+            swtrace.apply();
+        }
+    }
 }
 
 /*************************************************************************
@@ -298,6 +369,9 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.ipv4_option);
+        packet.emit(hdr.mri);
+        packet.emit(hdr.swtraces);
     }
 }
 

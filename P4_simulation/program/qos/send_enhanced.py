@@ -2,7 +2,7 @@
 """
 Enhanced traffic sending script
 Supports:
-- Fixed rank value (default 2000)
+- Fixed rank value (default 1500)
 - Auto-stop (based on time or packet count)
 - Create congestion scenarios to test WRR weight allocation
 - --fast: high-speed mode (pre-build packets + sendpfast, minimal logging; no per-packet timestamps, not for latency analysis; requires tcpreplay)
@@ -10,12 +10,11 @@ Supports:
 
 import argparse
 import socket
-import struct
 import sys
 import time
 
 from scapy.all import sendp, sendpfast, get_if_list, get_if_hwaddr, get_if_addr
-from scapy.all import Ether, IP, TCP, IPOption
+from scapy.all import Ether, IP, TCP
 
 
 def get_if():
@@ -40,7 +39,7 @@ def main():
 
     # Fixed rank options
     parser.add_argument("--num-packets", help="Number of packets (if using dynamic generation)", type=int, default=None)
-    parser.add_argument("--rank-value", help="Fixed rank value", type=int, default=2000)
+    parser.add_argument("--rank-value", help="Fixed rank value", type=int, default=1500)
 
     # Auto-stop options
     parser.add_argument("--duration", help="Send duration (seconds), 0 means send all packets. Used to create congestion scenarios", type=float, default=0)
@@ -52,6 +51,10 @@ def main():
                         help="High-speed mode: pre-build packets, use sendpfast, minimal logging. No per-packet timestamps (not for latency analysis). Requires tcpreplay.")
 
     args = parser.parse_args()
+
+    # Fast mode: default to no per-packet logging (max pps, minimal I/O)
+    if args.fast and args.log_every == 1:
+        args.log_every = 0
 
     # Determine packet count and rank value
     if args.h:
@@ -104,9 +107,8 @@ def main():
                 print(f"  Will write theoretical timestamps (every {args.log_every} pkts) after send for latency analysis")
             else:
                 print(f"  No timestamps (use --log-every=N to write theoretical timestamps after send)")
-            rank_bytes = struct.pack('>i', rank_value)
             base = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff", type=0x800) / IP(
-                src=get_if_addr(iface), dst=addr, options=IPOption(rank_bytes)
+                src=get_if_addr(iface), dst=addr, id=(rank_value & 0xffff)
             ) / TCP() / args.m
             pkts = [base.copy() for _ in range(n_pkts)]
             t0 = time.time()
@@ -160,7 +162,6 @@ def main():
                 time.sleep(next_send_time - now)
 
             # Construct packet
-            rank_bytes = struct.pack('>i', rank)
             pkt = Ether(
                 src=get_if_hwaddr(iface),
                 dst="ff:ff:ff:ff:ff:ff",
@@ -168,7 +169,7 @@ def main():
             ) / IP(
                 src=get_if_addr(iface),
                 dst=addr,
-                options=IPOption(rank_bytes)
+                id=(rank & 0xffff)
             ) / TCP() / args.m
 
             # Send packet
