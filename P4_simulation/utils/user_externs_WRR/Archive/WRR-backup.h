@@ -12,12 +12,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <vector>
-#include <map>
-#include <numeric>
 #include <chrono>
 #include <iostream>
+#include <map>
+#include <mutex>
+#include <numeric>
 #include <queue>
+#include <vector>
 #include <ctime>
 using namespace std::chrono;
 #pragma once
@@ -154,6 +155,7 @@ void init() override {  // Attributes
 	static unsigned int force_deq_flow_id;  //new static
 	static unsigned int enable_error_correction;   //new static
 	static std::queue<unsigned int> pkt_ptr_queue;
+	static std::queue<unsigned int> flow_id_queue;  // paired with pkt_ptr_queue for per-flow TM_buffer stats
 
 	static int start_time;
 	static int last_time;
@@ -161,6 +163,8 @@ void init() override {  // Attributes
 	static	std::vector<unsigned int> quota_each_queue;
 
 	static	std::vector<unsigned int> quantums;
+
+	static std::mutex quota_mutex;
 
 	void pass_rank_values(const Data& rank_value, const Data& level_id)
 	{
@@ -173,6 +177,56 @@ void init() override {  // Attributes
 		new_ranks_each_level.insert(new_ranks_each_level.begin() + flow_id.get<uint32_t>() + (number_of_pkts_per_queue_each_level[0]*number_of_queues_per_level[0]*level_id.get<uint32_t>()), rank_value.get<uint32_t>());
 	}
 
+	void set_quantum(const Data& queue_idx, const Data& quantum_value, const Data& reset_quota_flag)
+	{
+		const auto idx = queue_idx.get<uint32_t>();
+		const auto new_quantum = quantum_value.get<uint32_t>();
+		const bool reset_quota_immediately = reset_quota_flag.get<uint32_t>() != 0;
+
+		std::lock_guard<std::mutex> lock(quota_mutex);
+
+		if (idx >= quantums.size())
+		{
+			BMLOG_ERROR("set_quantum: queue index {} out of range ({} queues configured)", idx, quantums.size());
+			return;
+		}
+
+		if (new_quantum == 0)
+		{
+			BMLOG_ERROR("set_quantum: rejecting zero quantum for queue {}", idx);
+			return;
+		}
+
+		quantums[idx] = new_quantum;
+
+		if (idx >= quota_each_queue.size())
+		{
+			BMLOG_ERROR("set_quantum: queue index {} out of range for quota vector ({} entries)", idx, quota_each_queue.size());
+			return;
+		}
+
+		if (reset_quota_immediately)
+		{
+			quota_each_queue[idx] = new_quantum;
+		}
+	}
+
+	void get_quantum(const Data& queue_idx, Data& out)
+	{
+		const auto idx = queue_idx.get<uint32_t>();
+
+		std::lock_guard<std::mutex> lock(quota_mutex);
+
+		if (idx < quantums.size())
+		{
+			out.set(quantums[idx]);
+		}
+		else
+		{
+			BMLOG_ERROR("get_quantum: queue index {} out of range ({} queues configured)", idx, quantums.size());
+			out.set(0);  // Return 0 for invalid index
+		}
+	}
 
 	void my_scheduler(const Data& in_flow_id, const Data& number_of_levels_used, const Data& in_pred, const Data& in_arrival_time, const Data& in_shaping, const Data& in_enq, const Data& in_pkt_ptr, const Data& in_deq, const Data& reset_time)
 	{
@@ -209,6 +263,7 @@ void init() override {  // Attributes
 		enq = in_enq.get<uint32_t>();
 		pkt_ptr = in_pkt_ptr.get<uint32_t>();
 		pkt_ptr_queue.push(pkt_ptr);
+		flow_id_queue.push(flow_id);
 		deq = in_deq.get<uint32_t>();
 		force_deq = 0;
 // the core code of the AR-PIFO scheduler, that enqueue, dequeue or force dequeue packets.
@@ -345,8 +400,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 				time_now = 0;
 			}
 
-			//std::this_thread::sleep_for(std::chrono::microseconds(810));  // equivalent to 1ms (with adding the overhead of the code)
-			std::this_thread::sleep_for(std::chrono::milliseconds(50));  // equivalent to 1ms (with adding the overhead of the code)
+			//std::this_thread::sleep_for(std::chrono::microseconds(810));  // 810 equivalent to 1ms (with adding the overhead of the code)
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));  // equivalent to 1ms (with adding the overhead of the code)
 
 			deq_packet_ptr = NULL;
 			bool dequeued_done_right = false;
@@ -384,8 +439,12 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 
 		//if(time_now >= 200000)
 		{
-			//for (int i = 0; i<72 ;i++)
-      for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
+			const auto queue_count = static_cast<int>(quantums.size());
+			if(queue_count == 0)
+			{
+				return;
+			}
+			for (int i = 0; i < queue_count; i++)
 			{
 				head_FS = FB[0];
 				bool found_flow_i = false;
@@ -426,8 +485,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			if(dequeued_done_right == false)
 			{
 				WRR_LOG_VERBOSE(debug, "First Round: No packet selected, entering Second Round");
-				//for (int i = 0; i<72 ;i++)
-        for (int i = 0; i<3 ;i++)  // by hang. minimal topology: 3 flows
+				for (int i = 0; i < queue_count; i++)
 				{
 					unsigned int current_quota = quota_each_queue[i];
 					bool quota_reset = false;
@@ -620,8 +678,7 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 				WRR_LOG_WARN("WARNING: dequeued_done_right=true but deq_packet_ptr=NULL");
 				WRR_LOG_DEBUG("Resetting all quotas to quantums");
 
-				//for (int i = 71; i>=0 ;i--)
-        for (int i = 2; i>=0 ;i--)  // by hang. minimal topology: 3 flows (0-2)
+				for (int i = queue_count - 1; i >= 0; i--)
 				{
 //BMLOG_DEBUG("Invoked ELBEDIWY testing of starting the dequeue operation i = {}, current_quota = {}, quantums[i] = {}", i, current_quota, quantums[i])
 						quota_each_queue.erase(quota_each_queue.begin() + i);
@@ -780,6 +837,18 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 		{
 			return 0;
 		}
+	}
+
+// return flow_id paired with last pkt_ptr (for per-flow TM_buffer stats). Must call with get_last_pkt_ptr.
+	unsigned int get_last_flow_id()
+	{
+		if(!flow_id_queue.empty())
+		{
+			unsigned int fid = flow_id_queue.front();
+			flow_id_queue.pop();
+			return fid;
+		}
+		return 0;
 	}
 
 // Apply dequeue operation in the scheduler, will be used inside the "Simple_Switch" target

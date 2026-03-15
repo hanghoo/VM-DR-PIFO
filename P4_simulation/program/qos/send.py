@@ -41,6 +41,9 @@ class SwitchTrace(Packet):
     fields_desc = [
         IntField("swid", 0),
         IntField("qdepth", 0),
+        IntField("flow1_qdepth", 0),
+        IntField("flow2_qdepth", 0),
+        IntField("latency", 0),  # queue latency (microseconds, deq_timedelta)
     ]
 
     def extract_padding(self, p):
@@ -55,7 +58,7 @@ class IPOption_MRI(IPOption):
         FieldLenField(
             "length", None, fmt="B",
             length_of="swtraces",
-            adjust=lambda pkt, l: l * 2 + 4
+            adjust=lambda pkt, l: l + 4  # 4-byte header + swtraces (20 bytes per trace)
         ),
         ShortField("count", 0),
         PacketListField(

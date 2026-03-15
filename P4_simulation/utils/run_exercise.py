@@ -76,8 +76,9 @@ class ExerciseTopo(Topo):
         switch_links = []
 
         # assumes host always comes first for host<-->switch links
+        # host names may start with 'h' (h1, h2, h_r1) or 'c' (c1 controller)
         for link in links:
-            if link['node1'][0] == 'h':
+            if link['node1'][0] in ('h', 'c'):
                 host_links.append(link)
             else:
                 switch_links.append(link)
@@ -147,7 +148,7 @@ class ExerciseRunner:
 
     def format_latency(self, l):
         """ Helper method for parsing link latencies from the topology json. """
-        if isinstance(l, (str, unicode)):
+        if isinstance(l, str):
             return l
         else:
             return str(l) + "ms"
@@ -232,7 +233,7 @@ class ExerciseRunner:
             if len(link) > 3:
                 link_dict['bandwidth'] = link[3]
 
-            if link_dict['node1'][0] == 'h':
+            if link_dict['node1'][0] in ('h', 'c'):
                 assert link_dict['node2'][0] == 's', 'Hosts should be connected to switches, not ' + str(link_dict['node2'])
             links.append(link_dict)
         return links
@@ -360,11 +361,12 @@ class ExerciseRunner:
             print(' for example run:  cat %s/s1-p4runtime-requests.txt' % self.log_dir)
             print('')
 
+        # sending_function(self)
         # Disable auto traffic generation by default.
         # Use Mininet CLI manually, e.g.:
         #   mininet> xterm h1 h2 h_r1 h_r2
         # and run send/receive scripts in those terminals.
-        print('Auto traffic is disabled. Please start send/receive manually via xterm.')
+        # print('Auto traffic is disabled. Please start send/receive manually via xterm.')
 
         CLI(self.net)
 

@@ -1,10 +1,10 @@
 
-[2026-02-08 02:17:33.833] /p4.v1.P4Runtime/SetForwardingPipelineConfig
+[2026-03-15 01:31:08.246] /p4.v1.P4Runtime/SetForwardingPipelineConfig
 ---
-Message too long (45909 bytes)! Skipping log...
+Message too long (65742 bytes)! Skipping log...
 ---
 
-[2026-02-08 02:17:33.842] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.256] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -39,7 +39,7 @@ updates {
 }
 ---
 
-[2026-02-08 02:17:33.843] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.257] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -65,7 +65,7 @@ updates {
           }
           params {
             param_id: 2
-            value: "\000\005"
+            value: "\000\004"
           }
         }
       }
@@ -74,7 +74,7 @@ updates {
 }
 ---
 
-[2026-02-08 02:17:33.843] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.257] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -100,7 +100,7 @@ updates {
           }
           params {
             param_id: 2
-            value: "\000\006"
+            value: "\000\005"
           }
         }
       }
@@ -109,7 +109,42 @@ updates {
 }
 ---
 
-[2026-02-08 02:17:33.844] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.258] /p4.v1.P4Runtime/Write
+---
+election_id {
+  low: 1
+}
+updates {
+  type: INSERT
+  entity {
+    table_entry {
+      table_id: 37375156
+      match {
+        field_id: 1
+        lpm {
+          value: "\n\000\001\004"
+          prefix_len: 32
+        }
+      }
+      action {
+        action {
+          action_id: 28792405
+          params {
+            param_id: 1
+            value: "\010\000\000\000\001\004"
+          }
+          params {
+            param_id: 2
+            value: "\000\003"
+          }
+        }
+      }
+    }
+  }
+}
+---
+
+[2026-03-15 01:31:08.259] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -140,7 +175,7 @@ updates {
 }
 ---
 
-[2026-02-08 02:17:33.845] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.259] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -171,7 +206,7 @@ updates {
 }
 ---
 
-[2026-02-08 02:17:33.846] /p4.v1.P4Runtime/Write
+[2026-03-15 01:31:08.260] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -184,7 +219,7 @@ updates {
       match {
         field_id: 1
         lpm {
-          value: "\n\000\001\003"
+          value: "\n\000\001\004"
           prefix_len: 32
         }
       }
@@ -193,10 +228,35 @@ updates {
           action_id: 19375587
           params {
             param_id: 1
-            value: "\000\000\000\000\000\003"
+            value: "\000\000\000\000\000\001"
           }
         }
       }
+    }
+  }
+}
+---
+
+[2026-03-15 01:31:08.261] /p4.v1.P4Runtime/Write
+---
+election_id {
+  low: 1
+}
+updates {
+  type: MODIFY
+  entity {
+    table_entry {
+      table_id: 43963015
+      action {
+        action {
+          action_id: 24573693
+          params {
+            param_id: 1
+            value: "\000\000\000\001"
+          }
+        }
+      }
+      is_default_action: true
     }
   }
 }

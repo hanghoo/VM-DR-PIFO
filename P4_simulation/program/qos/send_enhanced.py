@@ -14,7 +14,7 @@ import sys
 import time
 
 from scapy.all import sendp, sendpfast, get_if_list, get_if_hwaddr, get_if_addr
-from scapy.all import Ether, IP, TCP
+from scapy.all import Ether, IP, UDP
 
 
 def get_if():
@@ -32,23 +32,25 @@ def get_if():
 def main():
     parser = argparse.ArgumentParser(description="Enhanced traffic sending script (fixed rank)")
     parser.add_argument("--h", help="Workload file path (optional, if provided read from file)", type=str, default=None)
-    parser.add_argument("--des", help="Destination IP address", type=str, required=True)
+    parser.add_argument("--des", help="Destination IP address (required for send; h1->10.0.2.1, h2->10.0.2.2)", type=str, default=None)
     parser.add_argument("--rate", help="Send rate: sleep time between packets (seconds), lower value = higher rate", type=float, default=None)
-    parser.add_argument("--pps", help="Send rate in packets per second (overrides --rate if set). E.g. --pps=18 for 18 pps", type=float, default=None)
-    parser.add_argument("--log-every", help="Log send timestamp every N packets (default 1). Use 0 for no per-packet log (max pps test); use >1 to reduce I/O; log_every>1 or 0 yields fewer timestamps for latency analysis", type=int, default=1)
+    parser.add_argument("--pps", help="Send rate in packets per second (overrides --rate if set). Default 100", type=float, default=100)
+    parser.add_argument("--log-every", help="Log send timestamp every N packets. Default 100", type=int, default=100)
 
     # Fixed rank options
-    parser.add_argument("--num-packets", help="Number of packets (if using dynamic generation)", type=int, default=None)
-    parser.add_argument("--rank-value", help="Fixed rank value", type=int, default=1500)
+    parser.add_argument("--num-packets", help="Number of packets. Default 100000", type=int, default=100000)
+    parser.add_argument("--rank-value", help="Fixed rank value. Default 1500", type=int, default=1500)
 
     # Auto-stop options
-    parser.add_argument("--duration", help="Send duration (seconds), 0 means send all packets. Used to create congestion scenarios", type=float, default=0)
+    parser.add_argument("--duration", help="Send duration (seconds), 0 means send all packets. Default 30", type=float, default=30)
     parser.add_argument("--max-packets", help="Maximum packet count limit", type=int, default=None)
 
     # Flow mode
-    parser.add_argument("--flow-id", help="Flow ID (for logging)", type=int, default=0)
-    parser.add_argument("--fast", action="store_true",
-                        help="High-speed mode: pre-build packets, use sendpfast, minimal logging. No per-packet timestamps (not for latency analysis). Requires tcpreplay.")
+    parser.add_argument("--flow-id", help="Flow ID (for logging). h1=1, h2=2", type=int, default=1)
+    parser.add_argument("--port", help="UDP destination port. Default 4322 (data traffic; 4321 reserved for telemetry)", type=int, default=4322)
+    parser.add_argument("--fast", action="store_true", help="High-speed mode (default)")
+    parser.add_argument("--no-fast", dest="fast", action="store_false", help="Disable fast mode")
+    parser.set_defaults(fast=True)
 
     args = parser.parse_args()
 
@@ -70,6 +72,10 @@ def main():
         ranks = [rank_value] * num_packets
     else:
         print("Error: Must provide --h (workload file) or --num-packets (packet count)")
+        sys.exit(1)
+
+    if not args.des:
+        print("Error: Must provide --des (destination IP). E.g. h1: --des=10.0.2.1, h2: --des=10.0.2.2")
         sys.exit(1)
 
     # Rate: --pps takes precedence over --rate
@@ -109,7 +115,7 @@ def main():
                 print(f"  No timestamps (use --log-every=N to write theoretical timestamps after send)")
             base = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff", type=0x800) / IP(
                 src=get_if_addr(iface), dst=addr, id=(rank_value & 0xffff)
-            ) / TCP() / args.m
+            ) / UDP(dport=args.port, sport=1234) / args.m
             pkts = [base.copy() for _ in range(n_pkts)]
             t0 = time.time()
             sendpfast(pkts, pps=target_pps, loop=1, iface=iface)
@@ -170,7 +176,7 @@ def main():
                 src=get_if_addr(iface),
                 dst=addr,
                 id=(rank & 0xffff)
-            ) / TCP() / args.m
+            ) / UDP(dport=args.port, sport=1234) / args.m
 
             # Send packet
             sendp(pkt, iface=iface, verbose=False)

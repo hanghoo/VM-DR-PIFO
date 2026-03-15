@@ -10,7 +10,9 @@
         ["in_flow_id_0", 48, false],
         ["quantum_read_value_0", 48, false],
         ["key_0", 16, false],
-        ["key_1", 16, false]
+        ["key_1", 16, false],
+        ["flow0_qdepth", 32, false],
+        ["flow1_qdepth", 32, false]
       ]
     },
     {
@@ -43,6 +45,15 @@
         ["dstAddr", 48, false],
         ["srcAddr", 48, false],
         ["etherType", 16, false]
+      ]
+    },
+    {
+      "name" : "metadata",
+      "id" : 4,
+      "fields" : [
+        ["remaining", 16, false],
+        ["flow0_qdepth", 32, false],
+        ["flow1_qdepth", 32, false]
       ]
     },
     {
@@ -93,6 +104,13 @@
       "id" : 3,
       "header_type" : "ipv4_t",
       "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "metadata",
+      "id" : 4,
+      "header_type" : "metadata",
+      "metadata" : true,
       "pi_omit" : true
     }
   ],

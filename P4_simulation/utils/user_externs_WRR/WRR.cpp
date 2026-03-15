@@ -69,6 +69,7 @@ unsigned int hier_scheduler::switch_is_ready = 1;
 
 int hier_scheduler::start_time = 0;
 int hier_scheduler::last_time = 0;
+// dequeue_start_flow defined in TM_buffer_WRR.h (used by simple_switch build)
 
 //std::vector<unsigned int> hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
 //std::vector<unsigned int> hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
@@ -79,8 +80,8 @@ int hier_scheduler::last_time = 0;
 // To change weights: modify these values, or use set_quantum() method via P4Runtime at runtime
 #ifndef QUANTUMS_DEFINED_IN_WRR_CPP
 #define QUANTUMS_DEFINED_IN_WRR_CPP
-std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
-std::vector<unsigned int> bm::hier_scheduler::quantums = {40000,10000,2000}; // minimal topology: 3 flows (20:5:1 ratio)
+std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0}; // minimal topology: 3 flows
+std::vector<unsigned int> bm::hier_scheduler::quantums = {6000,6000}; // minimal topology: 3 flows (20:5:1 ratio)
 #endif
 std::mutex bm::hier_scheduler::quota_mutex;  // Mutex for thread-safe quantum updates
 BM_REGISTER_EXTERN(hier_scheduler)

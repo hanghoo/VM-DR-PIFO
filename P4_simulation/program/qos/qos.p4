@@ -68,10 +68,15 @@ header mri_t {
 header switch_t {
     switchID_t swid;
     qdepth_t   qdepth;
+    qdepth_t   flow1_qdepth;
+    qdepth_t   flow2_qdepth;
+    bit<32>    latency;  // queue latency (deq_timedelta, microseconds)
 }
 
 struct metadata {
     bit<16> remaining;
+    bit<32> flow1_qdepth;
+    bit<32> flow2_qdepth;
 }
 
 struct headers {
@@ -313,11 +318,14 @@ control MyEgress(inout headers hdr,
         hdr.swtraces[0].setValid();
         hdr.swtraces[0].swid = swid;
         hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth;
+        hdr.swtraces[0].flow1_qdepth = meta.flow1_qdepth;
+        hdr.swtraces[0].flow2_qdepth = meta.flow2_qdepth;
+        hdr.swtraces[0].latency = (bit<32>)0;  // TODO: use standard_metadata.deq_timedelta when verified
 
-        // Extend IPv4 option space by one switch_t (8 bytes)
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8;
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8;
+        // Extend IPv4 option space by one switch_t (20 bytes: swid+qdepth+flow1+flow2+latency)
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 5;
+        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 20;
+        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 20;
     }
 
     table swtrace {

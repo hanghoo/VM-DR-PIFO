@@ -155,9 +155,13 @@ void init() override {  // Attributes
 	static unsigned int force_deq_flow_id;  //new static
 	static unsigned int enable_error_correction;   //new static
 	static std::queue<unsigned int> pkt_ptr_queue;
+	static std::queue<unsigned int> flow_id_queue;  // paired with pkt_ptr_queue for per-flow TM_buffer stats
 
 	static int start_time;
 	static int last_time;
+
+	// Rotating start flow: which flow to check first in dequeue. Updated after each deq call for fairness when quantums are equal.
+	static unsigned int dequeue_start_flow;
 
 	static	std::vector<unsigned int> quota_each_queue;
 
@@ -262,6 +266,7 @@ void init() override {  // Attributes
 		enq = in_enq.get<uint32_t>();
 		pkt_ptr = in_pkt_ptr.get<uint32_t>();
 		pkt_ptr_queue.push(pkt_ptr);
+		flow_id_queue.push(flow_id);
 		deq = in_deq.get<uint32_t>();
 		force_deq = 0;
 // the core code of the AR-PIFO scheduler, that enqueue, dequeue or force dequeue packets.
@@ -442,8 +447,10 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			{
 				return;
 			}
-			for (int i = 0; i < queue_count; i++)
+			// First Round: iterate starting from dequeue_start_flow (rotating start for fairness)
+			for (int k = 0; k < queue_count; k++)
 			{
+				int i = (dequeue_start_flow + k) % queue_count;
 				head_FS = FB[0];
 				bool found_flow_i = false;
 				while((head_FS != NULL))
@@ -483,8 +490,10 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 			if(dequeued_done_right == false)
 			{
 				WRR_LOG_VERBOSE(debug, "First Round: No packet selected, entering Second Round");
-				for (int i = 0; i < queue_count; i++)
+				// Second Round: same rotating order as First Round
+				for (int k = 0; k < queue_count; k++)
 				{
+					int i = (dequeue_start_flow + k) % queue_count;
 					unsigned int current_quota = quota_each_queue[i];
 					bool quota_reset = false;
 
@@ -684,6 +693,8 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 				}
 			}
 		}  // end unconditional dequeue scope (was guarded by commented if)
+			// Rotating start flow: update after each deq call for fairness when quantums are equal
+			dequeue_start_flow = (dequeue_start_flow + 1) % static_cast<unsigned int>(quantums.size());
 		}  // end if ((deq == 1) && (switch_is_ready == 1))
 		else
 		{
@@ -835,6 +846,18 @@ void level_controller(std::shared_ptr<packet>& level_packet_ptr, unsigned int le
 		{
 			return 0;
 		}
+	}
+
+// return flow_id paired with last pkt_ptr (for per-flow TM_buffer stats). Must call with get_last_pkt_ptr.
+	unsigned int get_last_flow_id()
+	{
+		if(!flow_id_queue.empty())
+		{
+			unsigned int fid = flow_id_queue.front();
+			flow_id_queue.pop();
+			return fid;
+		}
+		return 0;
 	}
 
 // Apply dequeue operation in the scheduler, will be used inside the "Simple_Switch" target

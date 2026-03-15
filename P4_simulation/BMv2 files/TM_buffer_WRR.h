@@ -16,7 +16,6 @@
 #include <utility>
 
 #include <queue>
-#include <atomic>
 
 #include "simple_switch.h"
 #include "register_access.h"
@@ -45,8 +44,7 @@ std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {1}; 
 //std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {8,2,1}; // 3 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_queues_per_level = {16,8,4,2,1}; // 5 levels
 
-//std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
-std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {3}; // one level (minimal topology: 3 flows)
+std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {72}; // one level
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {4 ,bm::hier_scheduler::number_of_queues_per_level[0]}; // 2 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {10 ,bm::hier_scheduler::number_of_queues_per_level[0]/bm::hier_scheduler::number_of_queues_per_level[1] ,bm::hier_scheduler::number_of_queues_per_level[1]}; // 3 levels
 //std::vector<unsigned int> bm::hier_scheduler::number_of_pkts_per_queue_each_level = {80 ,bm::hier_scheduler::number_of_queues_per_level[0]/bm::hier_scheduler::number_of_queues_per_level[1],bm::hier_scheduler::number_of_queues_per_level[1]/bm::hier_scheduler::number_of_queues_per_level[2],bm::hier_scheduler::number_of_queues_per_level[2]/bm::hier_scheduler::number_of_queues_per_level[3] ,bm::hier_scheduler::number_of_queues_per_level[3]}; // 5 levels
@@ -88,14 +86,8 @@ unsigned int bm::hier_scheduler::switch_is_ready = 1;
 int bm::hier_scheduler::start_time = 0;
 int bm::hier_scheduler::last_time = 0;
 
-//std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
-//std::vector<unsigned int> bm::hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
-//std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-//std::vector<unsigned int> bm::hier_scheduler::quantums = {200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200,200};
-#ifndef QUANTUMS_DEFINED_IN_WRR_CPP
-std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {0,0,0}; // minimal topology: 3 flows
-std::vector<unsigned int> bm::hier_scheduler::quantums = {40000,20000,1000}; // minimal topology: 3 flows
-#endif
+std::vector<unsigned int> bm::hier_scheduler::quota_each_queue = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
+std::vector<unsigned int> bm::hier_scheduler::quantums = {7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500,7500,3000,4500};
 bool dequeued_pointers[50000] = {0};
 std::queue<unsigned int> pkt_ptr_queue;
 
@@ -112,8 +104,6 @@ bm::hier_scheduler dequeue_scheduler; // create object of the bm::hier_scheduler
 		std::shared_ptr<buffer> next;
 	};
 	static std::shared_ptr<buffer> buffer_head;
-	// Atomic count of packets in buffer_head - reliable for deq_qdepth (scheduler-agnostic)
-	static std::atomic<unsigned int> buffer_packet_count;
 
 
 unsigned int valid_pop(std::unique_ptr<Packet>& packet)
@@ -150,7 +140,6 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 			temp_ptr->next = NULL;
 			prev_ptr_buffer->next = temp_ptr;
 		}
-		buffer_packet_count++;
 	}
 ////////////////////// then the pop operation
 	std::shared_ptr<buffer> cur_ptr_buffer;
@@ -203,7 +192,6 @@ unsigned int valid_pop(std::unique_ptr<Packet>& packet)
 
 		if(packet != NULL)
 		{
-			if (buffer_packet_count > 0u) buffer_packet_count--;
 			dequeue_scheduler.increment_deq_count();
       		start_dequeue(1);
 			valid_packet = 1;
@@ -235,19 +223,11 @@ unsigned int num_of_read_pkts()
 	return dequeue_scheduler.num_of_read_pkts();
 }
 
-// Returns current packets in buffer_head (scheduler-agnostic, thread-safe)
-unsigned int get_buffer_depth()
-{
-	return buffer_packet_count.load();
-}
-
 void start_dequeue(unsigned int start)
 {
 	dequeue_scheduler.start_dequeue(start);
 }
 
 };
-
-std::atomic<unsigned int> TM_buffer::buffer_packet_count{0};
 
 }

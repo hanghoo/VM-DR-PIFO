@@ -391,7 +391,7 @@ def test_quantum_operations(grpc_port=50051, device_id=0, p4info_path=None, bmv2
         print("Step 2: Modify quantums via P4Runtime (set_quantum_table)")
         print("-" * 70)
 
-        preset_quantums = [50000, 15000, 3000]
+        preset_quantums = [60000, 20000, 3000]
         if num_flows > len(preset_quantums):
             raise ValueError(f"num_flows={num_flows} exceeds supported preset quantums ({len(preset_quantums)})")
         new_quantums = {q: preset_quantums[q] for q in range(num_flows)}
